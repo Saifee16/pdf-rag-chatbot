@@ -10,7 +10,7 @@ from app.core.exceptions import AppError
 from app.providers.base import ChatProvider
 from app.repositories.conversation_repository import ConversationRepository
 from app.schemas.chat import ChatData, CitationData
-from app.services.retrieval_service import RetrievalService
+from app.services.retrieval_service import RetrievalMode, RetrievalService
 from app.services.vector_store import VectorHit
 
 CITATION_PATTERN = re.compile(r"\[(\d+)\]")
@@ -39,6 +39,7 @@ class RAGService:
         document_ids: list[str] | None,
         top_k: int | None,
         score_threshold: float | None,
+        mode: RetrievalMode | None = None,
     ) -> ChatData:
         conversation = self._get_or_create_conversation(conversation_id, question)
         history = self.conversations.recent_messages(
@@ -52,6 +53,7 @@ class RAGService:
             top_k=top_k,
             score_threshold=score_threshold,
             conversation_id=conversation.id,
+            mode=mode,
         )
         prompt = self._build_prompt(question=question, history=history, hits=retrieval.hits)
         generated = self.chat_provider.generate(

@@ -508,6 +508,14 @@ curl -X POST \
 
 The response shows ranked chunks, pages, text, and similarity scores.
 
+Retrieval accepts an explicit `mode`: `dense` (compatibility/fallback mode),
+`hybrid` (dense plus PostgreSQL full-text candidates fused with reciprocal rank
+fusion), or `hybrid_rerank` (hybrid followed by the provider-abstracted,
+deterministic local reranker). The released default is `hybrid` based on the
+synthetic benchmark; set `RETRIEVAL_MODE` or pass `mode` per request.
+All modes retain ready-document, index-fingerprint, document-ID filtering,
+trace, and citation boundaries.
+
 ### 4. Ask the RAG assistant
 
 ```bash
@@ -1112,6 +1120,16 @@ hit rate@k
 MRR@k
 ```
 
+For a provider-free comparison of all modes on a safe synthetic fixture:
+
+```bash
+python -m evaluation.run_retrieval_benchmark --iterations 50
+```
+
+This reports Recall@K, MRR, nDCG@K, and latency. See
+[`docs/EVALUATION.md`](docs/EVALUATION.md) for interpretation and the checked-in
+fixture.
+
 Read [`docs/EVALUATION.md`](docs/EVALUATION.md) before comparing chunking or embedding configurations.
 
 ---
@@ -1319,6 +1337,12 @@ Releases → v1.0.0
 | `EMBEDDING_BATCH_SIZE` | `32` | Documents per embedding batch |
 | `RETRIEVAL_TOP_K` | `5` | Default result count |
 | `RETRIEVAL_SCORE_THRESHOLD` | `0.35` | Default minimum similarity |
+| `RETRIEVAL_MODE` | `hybrid` | `dense`, `hybrid`, or `hybrid_rerank` |
+| `HYBRID_DENSE_CANDIDATES` | `20` | Dense candidate pool before fusion |
+| `HYBRID_LEXICAL_CANDIDATES` | `20` | Lexical candidate pool before fusion |
+| `RETRIEVAL_RRF_K` | `60` | Reciprocal-rank fusion smoothing constant |
+| `RERANKER_PROVIDER` | `deterministic` | `none` or local deterministic reranker |
+| `RERANK_CANDIDATES` | `20` | Candidate pool passed to reranking |
 | `CONVERSATION_HISTORY_MESSAGES` | `6` | Recent messages in prompt |
 | `RAG_SYSTEM_PROMPT_PATH` | `./prompts/rag_system.txt` | Grounding policy |
 
@@ -1372,8 +1396,6 @@ Consider adding:
 
 - metadata fields for authors/year
 - citation formatting
-- hybrid retrieval
-- reranking
 
 ### Build a legal-document assistant
 
@@ -1403,8 +1425,6 @@ This v1 intentionally does not include:
 
 - OCR for scanned/image-only PDFs
 - layout-aware table extraction
-- hybrid keyword + dense retrieval
-- reranking
 - multi-tenancy
 - end-user accounts
 - streaming responses

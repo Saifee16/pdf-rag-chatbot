@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 from pathlib import Path
 
 import httpx
@@ -12,9 +13,30 @@ def reciprocal_rank(returned_ids: list[str], expected_ids: set[str]) -> float:
     return 0.0
 
 
+def recall_at_k(returned_ids: list[str], expected_ids: set[str], k: int) -> float:
+    """Binary relevance recall, bounded to the first *k* results."""
+    if not expected_ids or k <= 0:
+        return 0.0
+    return len(set(returned_ids[:k]) & expected_ids) / len(expected_ids)
+
+
+def ndcg_at_k(returned_ids: list[str], expected_ids: set[str], k: int) -> float:
+    """nDCG for binary relevance with deterministic ideal ranking."""
+    if not expected_ids or k <= 0:
+        return 0.0
+    dcg = sum(
+        1.0 / math.log2(rank + 1)
+        for rank, item in enumerate(returned_ids[:k], start=1)
+        if item in expected_ids
+    )
+    ideal_hits = min(k, len(expected_ids))
+    idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_hits + 1))
+    return dcg / idcg if idcg else 0.0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate retrieval hit rate and MRR.")
-    parser.add_argument("--golden", type=Path, required=True)
+    parser.add_argument("--golden", "--dataset", dest="golden", type=Path, required=True)
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--api-key", default="")
     parser.add_argument("--top-k", type=int, default=5)
