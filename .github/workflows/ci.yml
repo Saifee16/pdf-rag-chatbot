@@ -107,9 +107,12 @@ jobs:
       - name: Create synthetic CI environment
         run: cp .env.example .env
       - name: Start the Compose stack
-        run: docker compose --project-name pdf-rag-chatbot-ci up --detach --build --wait --wait-timeout 180
+        run: docker compose --project-name pdf-rag-chatbot-ci up --detach --build
       - name: Verify health and migrations
         run: |
+          for service in api worker db redis qdrant; do
+            docker compose --project-name pdf-rag-chatbot-ci ps --status running --services | grep -qx "$service"
+          done
           curl --fail --retry 12 --retry-delay 5 http://127.0.0.1:8000/api/v1/health
           docker compose --project-name pdf-rag-chatbot-ci exec -T api alembic upgrade head
       - name: Collect service diagnostics on failure
