@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[Bug] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Upload ...
+        2. Wait for ...
+        3. Query ...
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - API
+        - Celery worker
+        - PDF extraction
+        - Chunking
+        - Embeddings
+        - Qdrant retrieval
+        - RAG generation
+        - Docker / Compose
+        - CI/CD
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.5"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove API keys and document contents that are sensitive.
+      render: shell

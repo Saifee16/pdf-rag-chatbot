@@ -1,0 +1,6 @@
+[
+  {
+    "question": "Replace this with a question answerable from your uploaded PDFs.",
+    "expected_document_ids": ["replace-with-document-id"]
+  }
+]
