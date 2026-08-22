@@ -35,6 +35,9 @@ class FakeChatProvider(ChatProvider):
     name = "fake-chat"
     model = "fake-chat-v1"
 
+    def __init__(self) -> None:
+        self.calls = 0
+
     @property
     def configured(self) -> bool:
         return True
@@ -45,6 +48,7 @@ class FakeChatProvider(ChatProvider):
         system_instruction: str,
         prompt: str,
     ) -> GeneratedAnswer:
+        self.calls += 1
         assert "untrusted source data" in system_instruction
         if "<document_context" in prompt:
             content = "The retrieved document provides the grounded answer [1]."

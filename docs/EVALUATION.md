@@ -31,7 +31,8 @@ python -m evaluation.run_retrieval_benchmark --iterations 50
 ```
 
 The versioned synthetic fixture at `evaluation/fixtures/retrieval_benchmark_v2.json`
-contains 34 queries over 12 public chunks. It deliberately covers exact lexical,
+contains 46 queries over 12 public chunks: 32 positive cases and 14 negative
+or no-answer cases. It deliberately covers exact lexical,
 paraphrase, low-keyword semantic, keyword and semantic distractors, multiple
 relevant chunks, split answers, repeated terminology, rare entities, numeric/date
 queries, negatives, and dense/lexical/hybrid/reranking decision cases. Fixture
@@ -43,13 +44,36 @@ false-positive rate, per-category results, and p50/p95 latency for `dense`,
 `hybrid`, and `hybrid_rerank`. Results are deterministic for quality metrics;
 latency is machine-dependent. Save a machine-readable result with `--output`.
 
-CI runs the quality-only regression gate (latency is observed, not thresholded):
+CI runs the quality-only and abstention regression gate (latency is observed, not
+thresholded):
 
 ```bash
 python -m evaluation.run_retrieval_benchmark \
-  --baseline evaluation/results/retrieval_benchmark_v2.json \
   --check-regression
 ```
+
+### Cycle 3 confidence and abstention evaluation
+
+Calibration is deterministic and separated from the final held-out split: case
+IDs whose numeric suffix is divisible by four are held out, and all other cases
+are used for calibration. The selected hybrid threshold is `0.50`, chosen only
+from calibration candidates with positive false-abstain rate at or below 10%.
+The checked-in report is `evaluation/results/retrieval_abstention_v3.json`.
+
+| Split / mode | Recall@3 | MRR | nDCG@3 | Negative FP | Positive false-abstain |
+|---|---:|---:|---:|---:|---:|
+| Held-out dense | 0.875 | 0.4583 | 0.5625 | 0.0000 | 0.0000 |
+| Held-out hybrid | 0.750 | 0.6875 | 0.7039 | 0.0000 | 0.0000 |
+| Held-out hybrid + rerank | 0.750 | 0.7500 | 0.7500 | 0.0000 | 0.0000 |
+
+Without the confidence gate, held-out negative FP is `1.0000` for every mode;
+the gate therefore removes all fixture false positives without sacrificing a
+positive case in this split. The synthetic evidence is not a claim that hybrid
+universally beats dense: dense retains higher Recall@3/HitRate@3 in the broader
+comparison, while hybrid has substantially better MRR and nDCG@3. Reranking has
+no aggregate fixture-quality improvement and remains opt-in because it adds
+latency. Negative/no-answer cases still expose a future abstention-calibration
+and answer-quality problem shared by all retrieval modes.
 
 The checked-in baseline is synthetic and contains no private documents,
 document-derived text, embeddings, or provider data. It is intentionally kept

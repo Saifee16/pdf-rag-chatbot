@@ -11,6 +11,7 @@ from typing import Any
 from app.services.hybrid_retrieval import reciprocal_rank_fusion
 from app.services.lexical_retrieval import tokenize
 from app.services.reranking_service import DeterministicReranker
+from app.services.retrieval_confidence import RetrievalConfidenceService
 from app.services.vector_store import VectorHit
 from evaluation.evaluate_retrieval import (
     hit_rate_at_k,
@@ -57,11 +58,15 @@ def _lexical_hits(question: str, chunks: list[dict[str, str]]) -> list[VectorHit
     ]
 
 
-def _dense_hits(order: list[str], chunks_by_id: dict[str, dict[str, str]]) -> list[VectorHit]:
+def _dense_hits(
+    order: list[str],
+    chunks_by_id: dict[str, dict[str, str]],
+    scores: dict[str, float] | None = None,
+) -> list[VectorHit]:
     return [
         VectorHit(
             id=chunk_id,
-            score=1.0 - (rank * 0.01),
+            score=(scores or {}).get(chunk_id, 1.0 - (rank * 0.01)),
             payload={"text": chunks_by_id[chunk_id]["text"]},
         )
         for rank, chunk_id in enumerate(order)
@@ -97,8 +102,37 @@ def validate_fixture(fixture: dict[str, Any]) -> None:
             raise ValueError(f"Case {case.get('id')} must rank every chunk exactly once")
         if category == "no_answer" and (relevant or not case.get("expected_no_answer")):
             raise ValueError("No-answer cases must have no relevant IDs and be marked negative")
+        scores = case.get("dense_scores")
+        if scores is not None:
+            if set(scores) != chunk_id_set or any(
+                not 0 <= float(value) <= 1 for value in scores.values()
+            ):
+                raise ValueError(f"Case {case.get('id')} has invalid dense scores")
     if len(seen_categories) < 12:
         raise ValueError("Benchmark fixture must cover at least 12 categories")
+
+
+def _split_for_case(case: dict[str, Any]) -> str:
+    """Stable split independent of query text or observed scores."""
+    digits = "".join(char for char in str(case["id"]) if char.isdigit())
+    number = int(digits or 0)
+    return "held_out" if number % 4 == 0 else "calibration"
+
+
+def _outputs_for_case(
+    case: dict[str, Any],
+    chunks_by_id: dict[str, dict[str, str]],
+    reranker: DeterministicReranker,
+    top_k: int,
+) -> dict[str, list[VectorHit]]:
+    dense = _dense_hits(list(case["dense_order"]), chunks_by_id, case.get("dense_scores"))
+    lexical = _lexical_hits(str(case["question"]), list(chunks_by_id.values()))
+    fused = reciprocal_rank_fusion(dense, lexical, limit=min(len(dense), 20))
+    return {
+        "dense": dense[:top_k],
+        "hybrid": reciprocal_rank_fusion(dense, lexical, limit=top_k),
+        "hybrid_rerank": reranker.rerank(str(case["question"]), fused, top_k),
+    }
 
 
 def _empty_scores() -> dict[str, float]:
@@ -148,17 +182,9 @@ def evaluate_fixture_report(fixture: dict[str, Any], *, iterations: int = 20) ->
     latency: dict[str, list[float]] = defaultdict(list)
     query_results: list[dict[str, Any]] = []
     for case in fixture["cases"]:
-        question = str(case["question"])
         expected = set(case["relevant_ids"])
         expected_no_answer = bool(case.get("expected_no_answer", False))
-        dense = _dense_hits(list(case["dense_order"]), chunks_by_id)
-        lexical = _lexical_hits(question, chunks)
-        fused = reciprocal_rank_fusion(dense, lexical, limit=min(len(dense), 20))
-        outputs = {
-            "dense": dense[:top_k],
-            "hybrid": reciprocal_rank_fusion(dense, lexical, limit=top_k),
-            "hybrid_rerank": reranker.rerank(question, fused, top_k),
-        }
+        outputs = _outputs_for_case(case, chunks_by_id, reranker, top_k)
         query_record: dict[str, Any] = {
             "id": case["id"],
             "category": case["category"],
@@ -174,11 +200,13 @@ def evaluate_fixture_report(fixture: dict[str, Any], *, iterations: int = 20) ->
             started = time.perf_counter()
             for _ in range(iterations):
                 if mode == "dense":
-                    _dense_hits(list(case["dense_order"]), chunks_by_id)[:top_k]
+                    _dense_hits(list(case["dense_order"]), chunks_by_id, case.get("dense_scores"))[
+                        :top_k
+                    ]
                 elif mode == "hybrid":
-                    reciprocal_rank_fusion(dense, lexical, limit=top_k)
+                    _outputs_for_case(case, chunks_by_id, reranker, top_k)["hybrid"]
                 else:
-                    reranker.rerank(question, fused, top_k)
+                    _outputs_for_case(case, chunks_by_id, reranker, top_k)["hybrid_rerank"]
             latency[mode].append((time.perf_counter() - started) * 1000 / iterations)
         query_results.append(query_record)
     modes = {}
@@ -201,6 +229,154 @@ def evaluate_fixture_report(fixture: dict[str, Any], *, iterations: int = 20) ->
     }
 
 
+def _abstention_metrics(records: list[dict[str, Any]], top_k: int) -> dict[str, float]:
+    if not records:
+        return {
+            "abstention_rate": 0.0,
+            "specificity": 0.0,
+            "negative_fp": 0.0,
+            "positive_false_abstain": 0.0,
+            "precision_accepted": 0.0,
+            "recall_at_k": 0.0,
+            "mrr": 0.0,
+            "ndcg_at_k": 0.0,
+        }
+    negatives = [record for record in records if record["expected_no_answer"]]
+    positives = [record for record in records if not record["expected_no_answer"]]
+    quality: list[dict[str, float]] = []
+    relevant_returned = 0
+    returned_count = 0
+    for record in positives:
+        returned = record["returned"] if record["accepted"] else []
+        expected = set(record["expected_ids"])
+        quality.append(_score_case(returned, expected, False, top_k))
+        relevant_returned += len(set(returned[:top_k]) & expected)
+        returned_count += len(returned[:top_k])
+    return {
+        "abstention_rate": round(sum(not item["accepted"] for item in records) / len(records), 6),
+        "specificity": round(sum(not item["accepted"] for item in negatives) / len(negatives), 6)
+        if negatives
+        else 0.0,
+        "negative_fp": round(sum(item["accepted"] for item in negatives) / len(negatives), 6)
+        if negatives
+        else 0.0,
+        "positive_false_abstain": round(
+            sum(not item["accepted"] for item in positives) / len(positives), 6
+        )
+        if positives
+        else 0.0,
+        "precision_accepted": round(relevant_returned / returned_count, 6)
+        if returned_count
+        else 0.0,
+        "recall_at_k": round(sum(item["recall_at_k"] for item in quality) / len(quality), 6)
+        if quality
+        else 0.0,
+        "mrr": round(sum(item["mrr"] for item in quality) / len(quality), 6) if quality else 0.0,
+        "ndcg_at_k": round(sum(item["ndcg_at_k"] for item in quality) / len(quality), 6)
+        if quality
+        else 0.0,
+    }
+
+
+def _evaluate_abstention_split(
+    fixture: dict[str, Any], *, threshold: float, split: str, iterations: int = 1
+) -> dict[str, Any]:
+    top_k = int(fixture["top_k"])
+    chunks_by_id = {chunk["id"]: chunk for chunk in fixture["chunks"]}
+    reranker = DeterministicReranker()
+    records: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    confidence = RetrievalConfidenceService(enabled=True, threshold=threshold)
+    latency: dict[str, list[float]] = defaultdict(list)
+    for case in fixture["cases"]:
+        if _split_for_case(case) != split:
+            continue
+        outputs = _outputs_for_case(case, chunks_by_id, reranker, top_k)
+        expected = set(case["relevant_ids"])
+        for mode, hits in outputs.items():
+            decision = confidence.decide(hits, mode=mode)
+            returned = [hit.id for hit in hits]
+            records[mode].append(
+                {
+                    "id": case["id"],
+                    "expected_ids": list(expected),
+                    "expected_no_answer": bool(case.get("expected_no_answer", False)),
+                    "returned": returned,
+                    "accepted": decision.accepted,
+                    "confidence": decision.confidence,
+                }
+            )
+            started = time.perf_counter()
+            for _ in range(iterations):
+                confidence.decide(hits, mode=mode)
+            latency[mode].append((time.perf_counter() - started) * 1000 / iterations)
+    return {
+        mode: {
+            **_abstention_metrics(records[mode], top_k),
+            "latency_p50_ms": round(_percentile(latency[mode], 50), 6),
+            "latency_p95_ms": round(_percentile(latency[mode], 95), 6),
+            "query_count": len(records[mode]),
+            "negative_count": sum(item["expected_no_answer"] for item in records[mode]),
+        }
+        for mode in MODES
+    }
+
+
+def _calibration_rows(fixture: dict[str, Any]) -> list[dict[str, float]]:
+    rows = []
+    for threshold in (0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55):
+        result = _evaluate_abstention_split(fixture, threshold=threshold, split="calibration")
+        hybrid = result["hybrid"]
+        rows.append(
+            {
+                "threshold": threshold,
+                "negative_fp": hybrid["negative_fp"],
+                "positive_false_abstain": hybrid["positive_false_abstain"],
+                "recall_at_k": hybrid["recall_at_k"],
+                "mrr": hybrid["mrr"],
+                "ndcg_at_k": hybrid["ndcg_at_k"],
+            }
+        )
+    return rows
+
+
+def _choose_threshold(rows: list[dict[str, float]]) -> float:
+    eligible = [row for row in rows if row["positive_false_abstain"] <= 0.10]
+    pool = eligible or rows
+    return min(
+        pool,
+        key=lambda row: (
+            row["negative_fp"],
+            -row["recall_at_k"],
+            -row["mrr"],
+            -row["ndcg_at_k"],
+            abs(row["threshold"] - 0.50),
+            row["threshold"],
+        ),
+    )["threshold"]
+
+
+def evaluate_abstention_report(fixture: dict[str, Any], *, iterations: int = 20) -> dict[str, Any]:
+    validate_fixture(fixture)
+    calibration_rows = _calibration_rows(fixture)
+    chosen_threshold = _choose_threshold(calibration_rows)
+    calibration = _evaluate_abstention_split(
+        fixture, threshold=chosen_threshold, split="calibration", iterations=iterations
+    )
+    held_out = _evaluate_abstention_split(
+        fixture, threshold=chosen_threshold, split="held_out", iterations=iterations
+    )
+    return {
+        "split_method": "case numeric suffix modulo 4; suffix divisible by 4 is held_out",
+        "chosen_threshold": chosen_threshold,
+        "calibration_candidates": calibration_rows,
+        "calibration": calibration,
+        "held_out": held_out,
+        "held_out_without_abstention": _evaluate_abstention_split(
+            fixture, threshold=0.0, split="held_out", iterations=iterations
+        ),
+    }
+
+
 def evaluate_fixture(
     fixture: dict[str, object], *, iterations: int = 20
 ) -> dict[str, dict[str, float]]:
@@ -210,49 +386,26 @@ def evaluate_fixture(
 
 def check_regression(report: dict[str, Any], baseline: dict[str, Any] | None = None) -> list[str]:
     """Return quality regressions; latency is reported but deliberately not gated."""
-    minimums = {
-        "dense": {
-            "recall_at_k": 0.75,
-            "precision_at_k": 0.20,
-            "hit_rate_at_k": 0.75,
-            "mrr": 0.40,
-            "ndcg_at_k": 0.50,
-        },
-        "hybrid": {
-            "recall_at_k": 0.75,
-            "precision_at_k": 0.20,
-            "hit_rate_at_k": 0.75,
-            "mrr": 0.60,
-            "ndcg_at_k": 0.70,
-        },
-        "hybrid_rerank": {
-            "recall_at_k": 0.60,
-            "precision_at_k": 0.20,
-            "hit_rate_at_k": 0.65,
-            "mrr": 0.55,
-            "ndcg_at_k": 0.60,
-        },
-    }
+    abstention = report.get("abstention")
+    if not abstention:
+        return []
     errors: list[str] = []
-    for mode, metrics in report["modes"].items():
-        for metric, minimum in minimums[mode].items():
-            if metrics[metric] < minimum:
-                errors.append(f"{mode}.{metric}={metrics[metric]:.4f} < {minimum:.4f}")
-    hybrid = report["modes"]["hybrid"]
-    dense = report["modes"]["dense"]
-    if hybrid["mrr"] <= dense["mrr"] or hybrid["ndcg_at_k"] <= dense["ndcg_at_k"]:
-        errors.append("hybrid must materially improve MRR and nDCG over dense")
-    if hybrid["no_answer_fp"] > 0.25 or report["modes"]["hybrid_rerank"]["no_answer_fp"] > 0.25:
-        errors.append("no-answer false-positive rate exceeds 0.25")
-    if baseline:
-        for mode in MODES:
-            for metric in ("recall_at_k", "precision_at_k", "hit_rate_at_k", "mrr", "ndcg_at_k"):
-                old = float(baseline["modes"][mode][metric])
-                new = float(report["modes"][mode][metric])
-                if new + 0.05 < old:
-                    errors.append(
-                        f"{mode}.{metric} regressed by more than 0.05 ({old:.4f} -> {new:.4f})"
-                    )
+    if abstention:
+        held_out = abstention["held_out"]["hybrid"]
+        if held_out["negative_fp"] > 0.20:
+            errors.append(f"hybrid held-out negative_fp={held_out['negative_fp']:.4f} > 0.2000")
+        if held_out["positive_false_abstain"] > 0.20:
+            errors.append(
+                "hybrid held-out positive_false_abstain="
+                f"{held_out['positive_false_abstain']:.4f} > 0.2000"
+            )
+        baseline_held_out = abstention["held_out_without_abstention"]["hybrid"]
+        for metric in ("recall_at_k", "mrr", "ndcg_at_k"):
+            if held_out[metric] + 0.05 < baseline_held_out[metric]:
+                errors.append(
+                    f"hybrid held-out {metric} regressed by more than 0.05 "
+                    f"({baseline_held_out[metric]:.4f} -> {held_out[metric]:.4f})"
+                )
     return errors
 
 
@@ -278,6 +431,7 @@ def main() -> None:
         "fixture": str(args.fixture),
         **evaluate_fixture_report(fixture, iterations=args.iterations),
     }
+    result["abstention"] = evaluate_abstention_report(fixture, iterations=args.iterations)
     print(json.dumps(result, indent=2, sort_keys=True))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

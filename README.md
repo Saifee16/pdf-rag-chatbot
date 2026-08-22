@@ -36,7 +36,7 @@ PDF → secure-ish upload validation → storage → queue → extraction
 
 ONLINE QUESTION ANSWERING
 question → query embedding → filtered dense retrieval → ranked chunks
-         → grounded prompt → LLM → citation validation → persisted answer
+         → confidence gate → grounded prompt → LLM → citation validation → persisted answer
 ```
 
 ## Features
@@ -50,6 +50,8 @@ question → query embedding → filtered dense retrieval → ranked chunks
 - query/document embedding semantics
 - dense vector retrieval through Qdrant
 - configurable top-k and score threshold
+- evidence-based retrieval confidence with configurable abstention
+- grounded insufficient-evidence response without an LLM call when confidence is low
 - document-scoped retrieval filters
 - retrieval traces
 - page-aware citations
@@ -1349,6 +1351,8 @@ Releases → v1.0.0
 | `EMBEDDING_BATCH_SIZE` | `32` | Documents per embedding batch |
 | `RETRIEVAL_TOP_K` | `5` | Default result count |
 | `RETRIEVAL_SCORE_THRESHOLD` | `0.35` | Default minimum similarity |
+| `RETRIEVAL_ABSTENTION_ENABLED` | `true` | Return grounded insufficient-evidence responses below the confidence threshold |
+| `RETRIEVAL_CONFIDENCE_THRESHOLD` | `0.50` | Evidence confidence threshold for accepting retrieved context |
 | `RETRIEVAL_MODE` | `hybrid` | `dense`, `hybrid`, or `hybrid_rerank` |
 | `HYBRID_DENSE_CANDIDATES` | `20` | Dense candidate pool before fusion |
 | `HYBRID_LEXICAL_CANDIDATES` | `20` | Lexical candidate pool before fusion |

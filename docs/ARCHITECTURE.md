@@ -87,11 +87,11 @@ embed query with RETRIEVAL_QUERY semantics
 Qdrant cosine search (dense candidates)
   ├── dense mode → top-k + score threshold
   └── hybrid modes → PostgreSQL FTS candidates → reciprocal-rank fusion
-                         └── optional deterministic/local reranker
+                          └── optional deterministic/local reranker
   ↓
-persist RetrievalTrace
-  ↓
-return ranked chunks
+evidence-based confidence decision
+  ├── accepted → persist trace and return ranked chunks
+  └── abstained → persist trace with reason and return no chunks
 ```
 
 `POST /api/v1/retrieval/search` exposes this path without generation. This is deliberate: retrieval can be debugged and evaluated independently from the LLM.
@@ -103,6 +103,15 @@ the explicit compatibility/fallback mode. Hybrid lexical candidates use the same
 fingerprint-compatible document filter as dense search. PostgreSQL uses the GIN
 expression index from migration `0002`; SQLite uses a deterministic token
 overlap fallback for local tests.
+
+The confidence gate combines the strongest dense and lexical evidence, channel
+agreement, and the top-score margin. It is enabled by default with
+`RETRIEVAL_ABSTENTION_ENABLED=true` and `RETRIEVAL_CONFIDENCE_THRESHOLD=0.50`.
+The retrieval and chat responses expose additive `retrieval_confidence`,
+`abstained`, and `abstention_reason` metadata. When a query is abstained, chat
+returns a grounded insufficient-evidence answer with empty citations and skips
+the provider call entirely. Set the enabled flag to `false` for compatibility
+experiments; the confidence metadata remains observable.
 
 ## Online RAG chat path
 
@@ -117,6 +126,9 @@ persist user message
   ↓
 RetrievalService.retrieve()
   ↓
+confidence gate
+  ├── abstained → insufficient-evidence answer, empty citations, no provider call
+  └── accepted →
 number each retrieved context [1], [2], ...
   ↓
 system instruction sent through provider system channel

@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     retrieval_score_threshold: float = Field(
         default=0.35, ge=0.0, le=1.0, alias="RETRIEVAL_SCORE_THRESHOLD"
     )
+    retrieval_abstention_enabled: bool = Field(default=True, alias="RETRIEVAL_ABSTENTION_ENABLED")
+    retrieval_confidence_threshold: float = Field(
+        default=0.50, ge=0.0, le=1.0, alias="RETRIEVAL_CONFIDENCE_THRESHOLD"
+    )
     retrieval_mode: Literal["dense", "hybrid", "hybrid_rerank"] = Field(
         default="hybrid", alias="RETRIEVAL_MODE"
     )

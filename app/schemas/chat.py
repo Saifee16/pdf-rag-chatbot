@@ -38,6 +38,9 @@ class ChatData(BaseModel):
     provider: str
     model: str
     retrieved_chunk_count: int
+    retrieval_confidence: float = 0.0
+    abstained: bool = False
+    abstention_reason: str | None = None
 
 
 class MessageData(BaseModel):
