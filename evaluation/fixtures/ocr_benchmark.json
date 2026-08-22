@@ -1,0 +1,47 @@
+[
+  {
+    "id": "native-text-01",
+    "fixture_type": "native_text",
+    "question": "How quickly are qualified leads answered?",
+    "source_text": "Qualified leads receive a response within two business days.",
+    "expected_page": 1,
+    "expected_keywords": ["qualified", "leads", "two", "business", "days"]
+  },
+  {
+    "id": "image-only-01",
+    "fixture_type": "image_only",
+    "question": "What is the scanned retention period?",
+    "source_text": "Scanned retention policy: retain customer records for ninety days.",
+    "expected_page": 1,
+    "expected_keywords": ["scanned", "retention", "ninety", "days"]
+  },
+  {
+    "id": "mixed-01",
+    "fixture_type": "mixed",
+    "question": "Who approves a scanned escalation?",
+    "source_text": "Scanned escalation policy: manager approval is required.",
+    "expected_page": 2,
+    "expected_keywords": ["scanned", "manager", "approval", "required"]
+  },
+  {
+    "id": "blank-scanned-01",
+    "fixture_type": "blank_scanned",
+    "source_text": "",
+    "expected_page": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "malformed-image-only-01",
+    "fixture_type": "malformed_image_only",
+    "source_text": "",
+    "expected_page": null,
+    "expected_keywords": []
+  },
+  {
+    "id": "ocr-page-limit-01",
+    "fixture_type": "ocr_page_limit",
+    "source_text": "Scanned page one.",
+    "expected_page": null,
+    "expected_keywords": []
+  }
+]

@@ -34,6 +34,30 @@ application services
 uploaded PDF text = untrusted source data
 ```
 
+## Threat: OCR subprocess and resource exhaustion
+
+### Risks
+
+- a crafted page could request an excessively large rendered image;
+- a local OCR process could hang or emit unbounded output;
+- temporary OCR images could remain after a failed ingestion;
+- OCR text could accidentally cross a network or logging boundary.
+
+### Baseline controls
+
+- OCR is disabled as a network capability: the worker invokes local Tesseract only;
+- subprocess arguments are passed as a list with `shell=False`, never through shell interpolation;
+- page dimensions, rendered pixel count, output characters, per-page timeout, document deadline, and OCR page count are bounded by configuration/hard limits;
+- `TemporaryDirectory` removes each page image on success and failure;
+- Celery retries timeout/transient OCR failures, while malformed input and unavailable/non-zero OCR engines fail the document permanently;
+- only page number, counts, and status are logged; OCR text and temporary paths are not logged.
+
+### Remaining risk
+
+Tesseract and the PDF renderer are still parser dependencies. Keep the worker
+non-root, apply container/runtime isolation and quotas, and add malware scanning or
+content disarm/reconstruction for higher-risk deployments.
+
 ## Threat: unrestricted paid-provider access
 
 ### Risk

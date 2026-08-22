@@ -56,9 +56,12 @@ Celery task ID returned with HTTP 202
       ↓
 worker marks document processing
       ↓
-PyMuPDF page extraction
+      PyMuPDF native page extraction
       ↓
-page-aware chunking
+      pages below OCR_MIN_NATIVE_TEXT_CHARS → local Tesseract OCR
+      (per-page image/time limits, bounded OCR_MAX_PAGES)
+      ↓
+      page-aware chunking
       ↓
 document embeddings in batches
       ↓
@@ -71,7 +74,7 @@ store deterministic chunk metadata
 Document(status=ready)
 ```
 
-The API acknowledges the upload before the full indexing pipeline completes. Clients poll `GET /api/v1/documents/{document_id}` until the document is `ready` or `failed`.
+The API acknowledges the upload before the full indexing pipeline completes. Clients poll `GET /api/v1/documents/{document_id}` until the document is `ready` or `failed`. OCR runs inside the worker with a direct, argument-list subprocess call; no OCR bytes are sent to an external service. Page numbers and citation metadata remain attached to the resulting chunks for native, OCR, and mixed documents.
 
 ## Online retrieval path
 
@@ -297,7 +300,6 @@ The API container applies Alembic migrations before starting Uvicorn. Both API a
 
 Not included in this baseline:
 
-- OCR for scanned PDFs
 - table-specific extraction
 - multi-tenancy
 - end-user JWT/OAuth
@@ -306,4 +308,6 @@ Not included in this baseline:
 - streaming generation
 - automatic embedding-model migration
 
-These are explicit extensions, not hidden TODOs required for the core v1 to function.
+Local OCR for scanned/image-only PDFs is implemented as the Cycle 4 extension. The
+remaining items are explicit extensions, not hidden TODOs required for the core v1
+to function.
