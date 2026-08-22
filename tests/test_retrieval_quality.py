@@ -94,7 +94,7 @@ def test_benchmark_reports_all_modes_and_quality_metrics() -> None:
 
     fixture = json.loads(
         (
-                Path(__file__).parents[1] / "evaluation" / "fixtures" / "retrieval_benchmark_v2.json"
+            Path(__file__).parents[1] / "evaluation" / "fixtures" / "retrieval_benchmark_v2.json"
         ).read_text(encoding="utf-8")
     )
     result = evaluate_fixture(fixture, iterations=2)
