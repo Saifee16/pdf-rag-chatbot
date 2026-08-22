@@ -1,0 +1,247 @@
+{
+  "fixture_version": "layout-v1",
+  "query_count": 10,
+  "scenarios": [
+    {
+      "id": "simple-01",
+      "kind": "simple",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "layout_ingestion_latency_ms": 9.433,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "old_ingestion_latency_ms": 42.212
+    },
+    {
+      "id": "columns-01",
+      "kind": "two_column",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 4,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "layout_ingestion_latency_ms": 15.77,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "old_ingestion_latency_ms": 16.935
+    },
+    {
+      "id": "heading-01",
+      "kind": "heading",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 2,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "layout_ingestion_latency_ms": 19.691,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "old_ingestion_latency_ms": 10.755
+    },
+    {
+      "id": "table-01",
+      "kind": "table",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "layout_ingestion_latency_ms": 109.032,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "old_ingestion_latency_ms": 8.372
+    },
+    {
+      "id": "table-prose-01",
+      "kind": "table_prose",
+      "layout_aware_extraction": {
+        "chunk_count": 2,
+        "citation_page_accuracy": 1.0,
+        "element_count": 3,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "layout_ingestion_latency_ms": 88.697,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "old_ingestion_latency_ms": 11.251
+    },
+    {
+      "id": "key-value-01",
+      "kind": "key_value",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "layout_ingestion_latency_ms": 34.727,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "old_ingestion_latency_ms": 6.531
+    },
+    {
+      "id": "repeated-heading-01",
+      "kind": "repeated_headings",
+      "layout_aware_extraction": {
+        "chunk_count": 2,
+        "citation_page_accuracy": 1.0,
+        "element_count": 4,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "layout_ingestion_latency_ms": 26.874,
+      "old_extraction": {
+        "chunk_count": 2,
+        "citation_page_accuracy": 1.0,
+        "element_count": 2,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "old_ingestion_latency_ms": 14.406
+    },
+    {
+      "id": "mixed-01",
+      "kind": "mixed",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "layout_ingestion_latency_ms": 14.853,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 0.0
+      },
+      "old_ingestion_latency_ms": 22.278
+    },
+    {
+      "id": "empty-cell-01",
+      "kind": "empty_cell",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "layout_ingestion_latency_ms": 21.018,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "old_ingestion_latency_ms": 5.621
+    },
+    {
+      "id": "table-limit-01",
+      "kind": "table_limit",
+      "layout_aware_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 1.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "layout_ingestion_latency_ms": 33.553,
+      "old_extraction": {
+        "chunk_count": 1,
+        "citation_page_accuracy": 1.0,
+        "element_count": 1,
+        "extraction_success": true,
+        "retrieval_recall_at_3": 1.0,
+        "structured_content_preservation": 0.0,
+        "table_answer_retrieval_accuracy": 1.0
+      },
+      "old_ingestion_latency_ms": 6.986
+    }
+  ],
+  "top_k": 3
+}

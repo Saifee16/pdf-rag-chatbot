@@ -58,6 +58,33 @@ Tesseract and the PDF renderer are still parser dependencies. Keep the worker
 non-root, apply container/runtime isolation and quotas, and add malware scanning or
 content disarm/reconstruction for higher-risk deployments.
 
+## Threat: layout/table parsing and extraction amplification
+
+### Risks
+
+- a crafted page could contain many vector lines or cells and amplify table work;
+- table text could be indexed twice if it overlaps ordinary text blocks;
+- malformed or irregular cells could shift columns or create oversized chunks;
+- layout heuristics could attach an incorrect heading to a citation context.
+
+### Baseline controls
+
+- the native layout layer runs locally and uses no external document-AI service;
+- table count, rows, columns, cells, table text, text blocks, and page output are
+  bounded by hard limits;
+- accepted table regions are removed from ordinary block extraction once, while
+  uncertain or over-limit tables keep the plain native fallback;
+- empty cells are retained, output is deterministic Markdown, and large tables are
+  split at row boundaries by the chunker;
+- heading inference requires converging font/size/isolation/numbering evidence and
+  remains metadata only; page-level citations still use the original page number.
+
+### Remaining risk
+
+Borderless/merged-cell tables and complex magazine layouts may fall back to plain
+text or have imperfect ordering. Higher-risk deployments should keep parser
+isolation, quotas, malware scanning, and content-disarm controls in place.
+
 ## Threat: unrestricted paid-provider access
 
 ### Risk

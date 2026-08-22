@@ -98,6 +98,7 @@ class LexicalRetriever:
 
     @staticmethod
     def _to_hit(chunk: Chunk, filename: str, score: float) -> VectorHit:
+        metadata = chunk.metadata_json or {}
         return VectorHit(
             id=str(chunk.id),
             score=score,
@@ -107,6 +108,7 @@ class LexicalRetriever:
                 "page_number": int(chunk.page_number),
                 "chunk_index": int(chunk.chunk_index),
                 "text": chunk.text,
+                **metadata,
             },
         )
 

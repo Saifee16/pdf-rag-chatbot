@@ -1,0 +1,85 @@
+{
+  "version": "layout-v1",
+  "top_k": 3,
+  "cases": [
+    {
+      "id": "simple-01",
+      "kind": "simple",
+      "question": "response window",
+      "expected_terms": ["two", "business", "days"],
+      "expected_page": 1
+    },
+    {
+      "id": "columns-01",
+      "kind": "two_column",
+      "question": "right column escalation window",
+      "expected_terms": ["escalation", "manager", "approval"],
+      "expected_page": 1,
+      "expected_order": ["left-1", "left-2", "right-1", "right-2"]
+    },
+    {
+      "id": "heading-01",
+      "kind": "heading",
+      "question": "retention section archive period",
+      "expected_terms": ["retention", "seven", "years"],
+      "expected_page": 1,
+      "heading": "3. Retention policy"
+    },
+    {
+      "id": "table-01",
+      "kind": "table",
+      "question": "Pro plan storage",
+      "expected_terms": ["Pro", "20", "GB"],
+      "expected_page": 1,
+      "rows": [["Plan", "Price", "Storage"], ["Basic", "$10", "5 GB"], ["Pro", "$20", "20 GB"]]
+    },
+    {
+      "id": "table-prose-01",
+      "kind": "table_prose",
+      "question": "support contact after plans",
+      "expected_terms": ["support", "monthly"],
+      "expected_page": 1,
+      "rows": [["Plan", "Owner"], ["Basic", "Support"], ["Pro", "Success"]]
+    },
+    {
+      "id": "key-value-01",
+      "kind": "key_value",
+      "question": "region and retention",
+      "expected_terms": ["Region", "EU", "Retention", "90"],
+      "expected_page": 1,
+      "rows": [["Setting", "Value"], ["Region", "EU"], ["Retention", "90 days"]]
+    },
+    {
+      "id": "repeated-heading-01",
+      "kind": "repeated_headings",
+      "question": "second page controls",
+      "expected_terms": ["controls", "page", "two"],
+      "expected_page": 2,
+      "heading": "Controls"
+    },
+    {
+      "id": "mixed-01",
+      "kind": "mixed",
+      "question": "scanned escalation contact",
+      "expected_terms": ["scanned", "escalation", "contact"],
+      "expected_page": 2,
+      "ocr_text": "Scanned escalation contact is the on-call manager."
+    },
+    {
+      "id": "empty-cell-01",
+      "kind": "empty_cell",
+      "question": "retention table value",
+      "expected_terms": ["Retention", "90"],
+      "expected_page": 1,
+      "rows": [["Key", "Value"], ["Retention", "90 days"], ["Region", ""]]
+    },
+    {
+      "id": "table-limit-01",
+      "kind": "table_limit",
+      "question": "row 4 value",
+      "expected_terms": ["Row4", "bounded"],
+      "expected_page": 1,
+      "rows": [["Key", "Value"], ["Row1", "bounded"], ["Row2", "bounded"], ["Row3", "bounded"], ["Row4", "bounded"]]
+    }
+  ]
+}

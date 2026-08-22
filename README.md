@@ -47,6 +47,8 @@ question → query embedding → filtered dense retrieval → ranked chunks
 - page-aware PyMuPDF text extraction
 - local Tesseract OCR fallback for scanned/image-only pages
 - deterministic native/scanned/mixed page classification with OCR page and time limits
+- deterministic structure-aware native extraction for common headings, two-column pages,
+  ruled tables, key/value blocks, and section-aware chunks
 - custom chunking with configurable overlap
 - batched document embeddings
 - query/document embedding semantics
@@ -162,7 +164,8 @@ question → query embedding → filtered dense retrieval → ranked chunks
        ┌──────────┼──────────┐               RAGService
        │          │          │                    │
        ▼          ▼          ▼                    ├── conversation history
-   PyMuPDF   TextChunker  Embeddings               ├── system instruction
+       PyMuPDF → StructuredExtractionService → TextChunker → Embeddings
+                                                     ├── system instruction
        │          │          │                    ├── document contexts
        └──────────┴──────────┘                    └── current question
                   │                                   │
@@ -242,6 +245,7 @@ pdf-rag-chatbot/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── chunking_service.py
+│   │   ├── structured_extraction_service.py
 │   │   ├── conversation_service.py
 │   │   ├── index_config.py
 │   │   ├── ingestion_service.py
@@ -1159,6 +1163,19 @@ success, retrieval Recall@3, citation page accuracy, and observational OCR
 ingestion latency. `--real-ocr` exercises the local Tesseract executable installed
 by the Docker image and CI; it does not call an external OCR service.
 
+For structure-aware extraction and table/layout regression, run:
+
+```bash
+python -m evaluation.run_layout_benchmark --check-regression
+```
+
+This compares the previous plain text-block path with bounded native layout
+extraction across simple text, two-column pages, headings, ruled tables, key/value
+tables, table-plus-prose, repeated headings, mixed OCR/native pages, empty cells,
+and table-limit cases. It measures deterministic structure preservation, retrieval
+Recall@3, page citation accuracy, table-answer retrieval, and observational ingestion
+latency. It does not claim LLM answer quality or arbitrary layout understanding.
+
 Read [`docs/EVALUATION.md`](docs/EVALUATION.md) before comparing chunking or embedding configurations.
 
 ---
@@ -1472,7 +1489,6 @@ Read [`docs/ADDING_A_PROVIDER.md`](docs/ADDING_A_PROVIDER.md).
 
 This v1 intentionally does not include:
 
-- layout-aware table extraction
 - multi-tenancy
 - end-user accounts
 - streaming responses
@@ -1481,7 +1497,11 @@ This v1 intentionally does not include:
 - answer-level automated evaluation
 
 OCR for scanned/image-only PDFs is included as the Cycle 4 local/offline extension.
-The remaining limitations are documented so users know the baseline's scope.
+Cycle 5 adds bounded native layout extraction for common structures; complex
+magazine-style layouts, borderless/merged-cell tables, handwriting, and semantic
+document understanding remain outside the supported scope. Existing documents need
+reindexing to receive structure-aware chunks because the index fingerprint includes
+the extractor version.
 
 ---
 
