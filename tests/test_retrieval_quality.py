@@ -94,12 +94,12 @@ def test_benchmark_reports_all_modes_and_quality_metrics() -> None:
 
     fixture = json.loads(
         (
-            Path(__file__).parents[1] / "evaluation" / "fixtures" / "retrieval_benchmark.json"
+            Path(__file__).parents[1] / "evaluation" / "fixtures" / "retrieval_benchmark_v2.json"
         ).read_text(encoding="utf-8")
     )
     result = evaluate_fixture(fixture, iterations=2)
     assert set(result) == {"dense", "hybrid", "hybrid_rerank"}
-    assert result["hybrid"]["recall_at_k"] > result["dense"]["recall_at_k"]
+    assert result["hybrid"]["mrr"] > result["dense"]["mrr"]
     assert result["hybrid"]["ndcg_at_k"] > result["dense"]["ndcg_at_k"]
     assert recall_at_k(["a", "b"], {"b"}, 2) == 1.0
     assert ndcg_at_k(["b", "a"], {"b"}, 2) == 1.0
