@@ -45,6 +45,8 @@ question → query embedding → filtered dense retrieval → ranked chunks
 
 - asynchronous PDF ingestion
 - page-aware PyMuPDF text extraction
+- local Tesseract OCR fallback for scanned/image-only pages
+- deterministic native/scanned/mixed page classification with OCR page and time limits
 - custom chunking with configurable overlap
 - batched document embeddings
 - query/document embedding semantics
@@ -79,6 +81,7 @@ question → query embedding → filtered dense retrieval → ranked chunks
 - Redis
 - Celery background worker
 - local PDF storage adapter
+- OCR runs locally in the worker; PDF pixels and OCR output never leave the deployment
 - Docker image running as non-root
 - Docker Compose topology
 - named persistent volumes
@@ -1129,7 +1132,7 @@ For a provider-free comparison of all modes on a safe synthetic fixture:
 python -m evaluation.run_retrieval_benchmark --iterations 50
 ```
 
-The benchmark uses the 34-query V2 fixture and reports Recall@K, Precision@K,
+The benchmark uses the 46-query V2 fixture and reports Recall@K, Precision@K,
 HitRate@K, MRR, nDCG@K, no-answer false positives, category breakdowns, and
 p50/p95 latency for dense, hybrid, and opt-in hybrid-rerank modes. Run the
 quality regression gate with:
@@ -1143,6 +1146,18 @@ python -m evaluation.run_retrieval_benchmark \
 See
 [`docs/EVALUATION.md`](docs/EVALUATION.md) for interpretation and the checked-in
 synthetic fixture and baseline.
+
+For the deterministic, provider-free OCR subset (native, image-only, mixed, blank,
+malformed, and OCR-page-limit fixtures), run:
+
+```bash
+python -m evaluation.run_ocr_benchmark
+```
+
+The benchmark uses safe synthetic PDFs generated at runtime and reports extraction
+success, retrieval Recall@3, citation page accuracy, and observational OCR
+ingestion latency. `--real-ocr` exercises the local Tesseract executable installed
+by the Docker image and CI; it does not call an external OCR service.
 
 Read [`docs/EVALUATION.md`](docs/EVALUATION.md) before comparing chunking or embedding configurations.
 
@@ -1171,6 +1186,11 @@ docker run --env-file .env pdf-rag-chatbot worker
 ```
 
 A standalone container still needs reachable database/Redis/Qdrant endpoints and shared document storage where appropriate. Use Compose for the full local topology.
+
+The image includes the `tesseract-ocr` engine and English language data for local
+scanned-PDF processing. OCR temporary images are created under the configured
+storage directory, removed after each page, and are not part of the Git or Docker
+release context.
 
 ---
 
@@ -1342,6 +1362,19 @@ Releases → v1.0.0
 | `MAX_PDF_SIZE_MB` | `25` | Upload byte limit |
 | `MAX_PDF_PAGES` | `5000` | PDF page-count limit |
 
+### Local OCR
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OCR_ENABLED` | `true` | Enable local OCR fallback for pages below the native-text threshold |
+| `OCR_MIN_NATIVE_TEXT_CHARS` | `32` | Native text length at or above which OCR is skipped |
+| `OCR_MAX_PAGES` | `50` | Maximum scanned pages OCR may process per document |
+| `OCR_TIMEOUT_SECONDS` | `30` | Per-page local OCR subprocess timeout |
+| `OCR_DOCUMENT_TIMEOUT_SECONDS` | `900` | Total OCR deadline per document |
+| `OCR_DPI` | `200` | Rendering resolution for OCR page images |
+| `OCR_LANGUAGES` | `eng` | Comma-separated local Tesseract language identifiers |
+| `OCR_EXECUTABLE` | `tesseract` | Local Tesseract executable name or path |
+
 ### RAG/indexing
 
 | Variable | Default | Purpose |
@@ -1439,7 +1472,6 @@ Read [`docs/ADDING_A_PROVIDER.md`](docs/ADDING_A_PROVIDER.md).
 
 This v1 intentionally does not include:
 
-- OCR for scanned/image-only PDFs
 - layout-aware table extraction
 - multi-tenancy
 - end-user accounts
@@ -1448,7 +1480,8 @@ This v1 intentionally does not include:
 - object storage
 - answer-level automated evaluation
 
-The absence of these features is documented so users know the baseline's scope.
+OCR for scanned/image-only PDFs is included as the Cycle 4 local/offline extension.
+The remaining limitations are documented so users know the baseline's scope.
 
 ---
 

@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
@@ -27,6 +28,18 @@ class Settings(BaseSettings):
     storage_dir: Path = Field(default=Path("./data/uploads"), alias="STORAGE_DIR")
     max_pdf_size_mb: int = Field(default=25, ge=1, le=500, alias="MAX_PDF_SIZE_MB")
     max_pdf_pages: int = Field(default=5_000, ge=1, le=100_000, alias="MAX_PDF_PAGES")
+    ocr_enabled: bool = Field(default=True, alias="OCR_ENABLED")
+    ocr_min_native_text_chars: int = Field(
+        default=32, ge=0, le=10_000, alias="OCR_MIN_NATIVE_TEXT_CHARS"
+    )
+    ocr_max_pages: int = Field(default=50, ge=1, le=5_000, alias="OCR_MAX_PAGES")
+    ocr_timeout_seconds: float = Field(default=30.0, ge=1.0, le=300.0, alias="OCR_TIMEOUT_SECONDS")
+    ocr_document_timeout_seconds: float = Field(
+        default=900.0, ge=1.0, le=3_600.0, alias="OCR_DOCUMENT_TIMEOUT_SECONDS"
+    )
+    ocr_dpi: int = Field(default=200, ge=72, le=300, alias="OCR_DPI")
+    ocr_languages: str = Field(default="eng", alias="OCR_LANGUAGES")
+    ocr_executable: str = Field(default="tesseract", alias="OCR_EXECUTABLE")
 
     chunk_size: int = Field(default=1200, ge=200, le=10_000, alias="CHUNK_SIZE")
     chunk_overlap: int = Field(default=200, ge=0, le=5000, alias="CHUNK_OVERLAP")
@@ -93,6 +106,17 @@ class Settings(BaseSettings):
     def validate_chunking_configuration(self) -> Self:
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
+        return self
+
+    @model_validator(mode="after")
+    def validate_ocr_configuration(self) -> Self:
+        if not self.ocr_languages.strip():
+            raise ValueError("OCR_LANGUAGES must not be empty")
+        language_values = [item.strip() for item in self.ocr_languages.split(",") if item.strip()]
+        if any(not re.fullmatch(r"[A-Za-z0-9_+\-]+", item) for item in language_values):
+            raise ValueError("OCR_LANGUAGES contains an unsafe language identifier")
+        if not self.ocr_executable.strip() or "\x00" in self.ocr_executable:
+            raise ValueError("OCR_EXECUTABLE must not be empty or contain NUL bytes")
         return self
 
     @model_validator(mode="after")

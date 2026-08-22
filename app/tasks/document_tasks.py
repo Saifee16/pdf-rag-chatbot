@@ -12,7 +12,13 @@ from app.tasks.celery_app import celery_app
 logger = get_logger(__name__)
 
 
-@celery_app.task(bind=True, max_retries=3, name="documents.ingest")
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    soft_time_limit=1_800,
+    time_limit=1_860,
+    name="documents.ingest",
+)
 def ingest_document(self: Task, document_id: str) -> None:
     setup_logging()
     settings = get_settings()

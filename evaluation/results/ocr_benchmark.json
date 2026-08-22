@@ -1,0 +1,77 @@
+{
+  "cases": [
+    {
+      "chunk_count": 1,
+      "citation_page_accuracy": 1.0,
+      "error_code": null,
+      "extraction_success": true,
+      "fixture_type": "native_text",
+      "id": "native-text-01",
+      "ingestion_latency_ms": 54.861,
+      "page_count": 1,
+      "retrieval_recall_at_3": 1.0
+    },
+    {
+      "chunk_count": 1,
+      "citation_page_accuracy": 1.0,
+      "error_code": null,
+      "extraction_success": true,
+      "fixture_type": "image_only",
+      "id": "image-only-01",
+      "ingestion_latency_ms": 199.295,
+      "page_count": 1,
+      "retrieval_recall_at_3": 1.0
+    },
+    {
+      "chunk_count": 2,
+      "citation_page_accuracy": 1.0,
+      "error_code": null,
+      "extraction_success": true,
+      "fixture_type": "mixed",
+      "id": "mixed-01",
+      "ingestion_latency_ms": 207.082,
+      "page_count": 2,
+      "retrieval_recall_at_3": 1.0
+    },
+    {
+      "chunk_count": 0,
+      "citation_page_accuracy": null,
+      "error_code": null,
+      "extraction_success": true,
+      "fixture_type": "blank_scanned",
+      "id": "blank-scanned-01",
+      "ingestion_latency_ms": 167.313,
+      "page_count": 1,
+      "retrieval_recall_at_3": null
+    },
+    {
+      "chunk_count": 0,
+      "citation_page_accuracy": null,
+      "error_code": "PDF_PARSE_FAILED",
+      "extraction_success": false,
+      "fixture_type": "malformed_image_only",
+      "id": "malformed-image-only-01",
+      "ingestion_latency_ms": 7.622,
+      "page_count": 0,
+      "retrieval_recall_at_3": null
+    },
+    {
+      "chunk_count": 0,
+      "citation_page_accuracy": null,
+      "error_code": "OCR_TOO_MANY_PAGES",
+      "extraction_success": false,
+      "fixture_type": "ocr_page_limit",
+      "id": "ocr-page-limit-01",
+      "ingestion_latency_ms": 163.982,
+      "page_count": 0,
+      "retrieval_recall_at_3": null
+    }
+  ],
+  "citation_page_accuracy": 1.0,
+  "engine": "deterministic_fixture_adapter",
+  "extraction_success_rate": 0.666667,
+  "fixture": "evaluation/fixtures/ocr_benchmark.json",
+  "ocr_ingestion_latency_p50_ms": 167.313,
+  "query_count": 6,
+  "retrieval_recall_at_3": 1.0
+}

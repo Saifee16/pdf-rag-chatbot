@@ -16,6 +16,22 @@ def test_pdf_page_limit_is_bounded() -> None:
         Settings(MAX_PDF_PAGES=0)
 
 
+def test_ocr_resource_and_language_limits_are_validated() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, OCR_TIMEOUT_SECONDS=0)
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, OCR_LANGUAGES="eng;cat")
+
+    settings = Settings(
+        _env_file=None,
+        OCR_ENABLED=True,
+        OCR_LANGUAGES="eng, deu",
+        OCR_DPI=200,
+        OCR_MAX_PAGES=5,
+    )
+    assert settings.ocr_languages == "eng, deu"
+
+
 def _production_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "APP_ENV": "production",
