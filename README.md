@@ -1096,7 +1096,8 @@ pip-audit -r requirements.txt
 
 ## Retrieval evaluation
 
-The project includes a small retrieval evaluation CLI.
+The project includes a retrieval evaluation CLI and a provider-free synthetic
+regression benchmark.
 
 Create a golden query file from:
 
@@ -1126,9 +1127,20 @@ For a provider-free comparison of all modes on a safe synthetic fixture:
 python -m evaluation.run_retrieval_benchmark --iterations 50
 ```
 
-This reports Recall@K, MRR, nDCG@K, and latency. See
+The benchmark uses the 34-query V2 fixture and reports Recall@K, Precision@K,
+HitRate@K, MRR, nDCG@K, no-answer false positives, category breakdowns, and
+p50/p95 latency for dense, hybrid, and opt-in hybrid-rerank modes. Run the
+quality regression gate with:
+
+```bash
+python -m evaluation.run_retrieval_benchmark \
+  --baseline evaluation/results/retrieval_benchmark_v2.json \
+  --check-regression
+```
+
+See
 [`docs/EVALUATION.md`](docs/EVALUATION.md) for interpretation and the checked-in
-fixture.
+synthetic fixture and baseline.
 
 Read [`docs/EVALUATION.md`](docs/EVALUATION.md) before comparing chunking or embedding configurations.
 

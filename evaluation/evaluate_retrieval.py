@@ -13,6 +13,29 @@ def reciprocal_rank(returned_ids: list[str], expected_ids: set[str]) -> float:
     return 0.0
 
 
+def precision_at_k(returned_ids: list[str], expected_ids: set[str], k: int) -> float:
+    """Binary relevance precision among the first *k* results."""
+    if k <= 0:
+        return 0.0
+    return len(set(returned_ids[:k]) & expected_ids) / k
+
+
+def hit_rate_at_k(returned_ids: list[str], expected_ids: set[str], k: int) -> float:
+    """Return one when a non-negative query has any relevant result in top-k."""
+    if not expected_ids or k <= 0:
+        return 0.0
+    return float(bool(set(returned_ids[:k]) & expected_ids))
+
+
+def no_answer_false_positive(
+    returned_ids: list[str], expected_ids: set[str], expected_no_answer: bool
+) -> float:
+    """Return one when a no-answer query receives any candidate result."""
+    if not expected_no_answer:
+        return 0.0
+    return float(bool(returned_ids) and not expected_ids)
+
+
 def recall_at_k(returned_ids: list[str], expected_ids: set[str], k: int) -> float:
     """Binary relevance recall, bounded to the first *k* results."""
     if not expected_ids or k <= 0:

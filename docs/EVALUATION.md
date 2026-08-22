@@ -30,16 +30,37 @@ For an offline, provider-free comparison of the three retrieval modes, run:
 python -m evaluation.run_retrieval_benchmark --iterations 50
 ```
 
-The synthetic fixture at `evaluation/fixtures/retrieval_benchmark.json` reports
-Recall@K, MRR, nDCG@K, and mean per-query latency for `dense`, `hybrid`, and
-`hybrid_rerank`. It contains no private documents or provider data. Save a
-machine-readable result with `--output` when tracking experiments.
+The versioned synthetic fixture at `evaluation/fixtures/retrieval_benchmark_v2.json`
+contains 34 queries over 12 public chunks. It deliberately covers exact lexical,
+paraphrase, low-keyword semantic, keyword and semantic distractors, multiple
+relevant chunks, split answers, repeated terminology, rare entities, numeric/date
+queries, negatives, and dense/lexical/hybrid/reranking decision cases. Fixture
+integrity checks reject duplicate IDs, missing rankings, unknown references, and
+insufficient category coverage.
 
-The reference fixture run (top-k 3; latency is machine-dependent) improved
-Recall@3 from 0.80 to 1.00 and nDCG@3 from 0.4262 to 0.8262 for hybrid over
-dense-only. The deterministic reranker preserved those quality scores here
-while adding local CPU latency, so `hybrid` is the default and
-`hybrid_rerank` remains an explicit opt-in mode.
+The evaluator reports Recall@K, Precision@K, HitRate@K, MRR, nDCG@K, no-answer
+false-positive rate, per-category results, and p50/p95 latency for `dense`,
+`hybrid`, and `hybrid_rerank`. Results are deterministic for quality metrics;
+latency is machine-dependent. Save a machine-readable result with `--output`.
+
+CI runs the quality-only regression gate (latency is observed, not thresholded):
+
+```bash
+python -m evaluation.run_retrieval_benchmark \
+  --baseline evaluation/results/retrieval_benchmark_v2.json \
+  --check-regression
+```
+
+The checked-in baseline is synthetic and contains no private documents,
+document-derived text, embeddings, or provider data. It is intentionally kept
+separate from production retrieval code so fixture-specific shortcuts cannot
+improve the score.
+
+The Cycle 1 five-query reference remains documented in the release history.
+Cycle 2 uses the broader fixture to make trade-offs visible: hybrid materially
+improves MRR and nDCG over dense-only, while reranking adds local CPU latency
+without a reliable fixture-quality improvement. Therefore `hybrid` remains the
+default and `hybrid_rerank` remains an explicit opt-in mode.
 
 ## Golden query format
 
@@ -181,7 +202,7 @@ Use a table such as:
 
 Do not change five variables simultaneously and then claim one specific change caused the improvement.
 
-## What v1 does not measure
+## What the synthetic benchmark does not measure
 
 The included evaluator does not measure:
 
@@ -192,4 +213,5 @@ The included evaluator does not measure:
 - answer completeness
 - human preference
 
-Those belong in a generation/RAG evaluation layer. The v1 evaluator is intentionally retrieval-specific.
+Those belong in a generation/RAG evaluation layer. This evaluator is intentionally
+retrieval-specific and should not be presented as a production quality guarantee.
