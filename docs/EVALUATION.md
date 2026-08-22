@@ -24,6 +24,23 @@ evaluation/evaluate_retrieval.py
 
 so the retrieval layer can be measured without asking the LLM to generate prose.
 
+For an offline, provider-free comparison of the three retrieval modes, run:
+
+```bash
+python -m evaluation.run_retrieval_benchmark --iterations 50
+```
+
+The synthetic fixture at `evaluation/fixtures/retrieval_benchmark.json` reports
+Recall@K, MRR, nDCG@K, and mean per-query latency for `dense`, `hybrid`, and
+`hybrid_rerank`. It contains no private documents or provider data. Save a
+machine-readable result with `--output` when tracking experiments.
+
+The reference fixture run (top-k 3; latency is machine-dependent) improved
+Recall@3 from 0.80 to 1.00 and nDCG@3 from 0.4262 to 0.8262 for hybrid over
+dense-only. The deterministic reranker preserved those quality scores here
+while adding local CPU latency, so `hybrid` is the default and
+`hybrid_rerank` remains an explicit opt-in mode.
+
 ## Golden query format
 
 Copy the example file:
@@ -74,6 +91,12 @@ python -m evaluation.evaluate_retrieval \
   --api-key "$PDF_RAG_API_KEY"
 ```
 
+## Recall@k
+
+Recall@k is the fraction of expected relevant IDs present in the first k
+results. With one relevant chunk it is equivalent to a hit-rate check; with
+multiple relevant chunks it rewards retrieving more of the set.
+
 ## Hit rate@k
 
 For one query:
@@ -120,6 +143,12 @@ MRR answers:
 
 A system can have high hit rate but weak MRR if relevant documents regularly appear at rank 5 rather than rank 1.
 
+## nDCG@k
+
+nDCG discounts relevant results by rank and normalizes against the ideal order.
+The evaluator uses binary relevance for the synthetic fixture; a future domain
+dataset can provide graded relevance labels.
+
 ## What to change one variable at a time
 
 Useful experiments:
@@ -130,7 +159,13 @@ CHUNK_OVERLAP
 EMBEDDING_PROVIDER
 EMBEDDING_MODEL
 RETRIEVAL_TOP_K
-RETRIEVAL_SCORE_THRESHOLD
+    RETRIEVAL_SCORE_THRESHOLD
+    RETRIEVAL_MODE
+    HYBRID_DENSE_CANDIDATES
+    HYBRID_LEXICAL_CANDIDATES
+    RETRIEVAL_RRF_K
+    RERANKER_PROVIDER
+    RERANK_CANDIDATES
 ```
 
 When chunk or embedding configuration changes, the index fingerprint changes. Reindex documents before comparing retrieval results.

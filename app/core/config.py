@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     retrieval_score_threshold: float = Field(
         default=0.35, ge=0.0, le=1.0, alias="RETRIEVAL_SCORE_THRESHOLD"
     )
+    retrieval_mode: Literal["dense", "hybrid", "hybrid_rerank"] = Field(
+        default="hybrid", alias="RETRIEVAL_MODE"
+    )
+    hybrid_dense_candidates: int = Field(default=20, ge=1, le=200, alias="HYBRID_DENSE_CANDIDATES")
+    hybrid_lexical_candidates: int = Field(
+        default=20, ge=1, le=200, alias="HYBRID_LEXICAL_CANDIDATES"
+    )
+    retrieval_rrf_k: int = Field(default=60, ge=1, le=1000, alias="RETRIEVAL_RRF_K")
+    reranker_provider: Literal["none", "deterministic"] = Field(
+        default="deterministic", alias="RERANKER_PROVIDER"
+    )
+    rerank_candidates: int = Field(default=20, ge=1, le=200, alias="RERANK_CANDIDATES")
     conversation_history_messages: int = Field(
         default=6, ge=0, le=50, alias="CONVERSATION_HISTORY_MESSAGES"
     )

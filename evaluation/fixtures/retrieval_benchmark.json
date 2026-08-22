@@ -1,0 +1,20 @@
+{
+  "top_k": 3,
+  "chunks": [
+    {"id": "c1", "text": "The retention policy keeps standard records for ninety days."},
+    {"id": "c2", "text": "Priority one incidents require acknowledgement within fifteen minutes."},
+    {"id": "c3", "text": "Refund requests are accepted within thirty days of purchase."},
+    {"id": "c4", "text": "Backups are retained in glacier storage for one year."},
+    {"id": "c5", "text": "General support requests are answered within two business days."},
+    {"id": "c6", "text": "The service catalog describes response targets and escalation paths."},
+    {"id": "c7", "text": "A marketing campaign may run for ninety days before review."},
+    {"id": "c8", "text": "Purchases can be returned after inspection by the finance team."}
+  ],
+  "cases": [
+    {"question": "What is the retention policy for standard records?", "relevant_ids": ["c1"], "dense_order": ["c7", "c6", "c1", "c5", "c2", "c3", "c4", "c8"]},
+    {"question": "How quickly must a priority one incident be acknowledged?", "relevant_ids": ["c2"], "dense_order": ["c6", "c5", "c2", "c1", "c3", "c4", "c7", "c8"]},
+    {"question": "What is the refund window?", "relevant_ids": ["c3"], "dense_order": ["c8", "c6", "c3", "c5", "c1", "c2", "c4", "c7"]},
+    {"question": "How long are backups kept in glacier storage?", "relevant_ids": ["c4"], "dense_order": ["c6", "c1", "c5", "c4", "c2", "c3", "c7", "c8"]},
+    {"question": "What is the standard support response target?", "relevant_ids": ["c5"], "dense_order": ["c6", "c5", "c1", "c2", "c3", "c4", "c7", "c8"]}
+  ]
+}

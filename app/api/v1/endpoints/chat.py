@@ -22,5 +22,6 @@ def chat(
         document_ids=payload.document_ids,
         top_k=payload.top_k,
         score_threshold=payload.score_threshold,
+        mode=payload.mode,
     )
     return SuccessResponse(request_id=request.state.request_id, data=data)

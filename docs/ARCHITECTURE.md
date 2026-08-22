@@ -84,9 +84,10 @@ verify index fingerprint compatibility
   ↓
 embed query with RETRIEVAL_QUERY semantics
   ↓
-Qdrant cosine search
-  ↓
-top-k + score threshold
+Qdrant cosine search (dense candidates)
+  ├── dense mode → top-k + score threshold
+  └── hybrid modes → PostgreSQL FTS candidates → reciprocal-rank fusion
+                         └── optional deterministic/local reranker
   ↓
 persist RetrievalTrace
   ↓
@@ -94,6 +95,14 @@ return ranked chunks
 ```
 
 `POST /api/v1/retrieval/search` exposes this path without generation. This is deliberate: retrieval can be debugged and evaluated independently from the LLM.
+
+Requests support `mode=dense`, `mode=hybrid`, or `mode=hybrid_rerank`. The
+default is configurable with `RETRIEVAL_MODE` and is `hybrid` for the released
+configuration because the synthetic benchmark improves quality. `dense` remains
+the explicit compatibility/fallback mode. Hybrid lexical candidates use the same ready,
+fingerprint-compatible document filter as dense search. PostgreSQL uses the GIN
+expression index from migration `0002`; SQLite uses a deterministic token
+overlap fallback for local tests.
 
 ## Online RAG chat path
 
@@ -171,6 +180,10 @@ Ingestion/Retrieval
    ↓ EmbeddingProvider
    ├── GeminiProvider
    └── OpenAIProvider
+
+Retrieval reranking
+   ↓ Reranker protocol
+   └── DeterministicReranker (offline/local)
 ```
 
 The RAG service never imports a provider SDK.
@@ -274,8 +287,6 @@ Not included in this baseline:
 
 - OCR for scanned PDFs
 - table-specific extraction
-- hybrid BM25 + dense retrieval
-- reranking
 - multi-tenancy
 - end-user JWT/OAuth
 - object-storage adapter

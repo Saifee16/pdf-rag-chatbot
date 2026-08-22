@@ -21,6 +21,7 @@ def retrieval_search(
         document_ids=payload.document_ids,
         top_k=payload.top_k,
         score_threshold=payload.score_threshold,
+        mode=payload.mode,
     )
     hits = [
         RetrievalHitData(
@@ -41,6 +42,7 @@ def retrieval_search(
             trace_id=result.trace_id,
             query=payload.query,
             count=len(hits),
+            mode=result.mode,
             hits=hits,
         ),
     )

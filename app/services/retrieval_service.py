@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass
+from typing import Literal
 
 from fastapi import status
 from sqlalchemy.orm import Session
@@ -9,14 +10,20 @@ from app.core.exceptions import AppError
 from app.providers.base import EmbeddingProvider
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.retrieval_repository import RetrievalRepository
+from app.services.hybrid_retrieval import reciprocal_rank_fusion
 from app.services.index_config import index_fingerprint
+from app.services.lexical_retrieval import LexicalRetriever
+from app.services.reranking_service import build_reranker
 from app.services.vector_store import QdrantVectorStore, VectorHit
+
+RetrievalMode = Literal["dense", "hybrid", "hybrid_rerank"]
 
 
 @dataclass(slots=True)
 class RetrievalResult:
     trace_id: str
     hits: list[VectorHit]
+    mode: RetrievalMode
 
 
 class RetrievalService:
@@ -27,10 +34,13 @@ class RetrievalService:
         settings: Settings,
         embedding_provider: EmbeddingProvider,
         vector_store: QdrantVectorStore,
+        lexical_retriever: LexicalRetriever | None = None,
     ) -> None:
         self.settings = settings
         self.embedding_provider = embedding_provider
         self.vector_store = vector_store
+        self.lexical_retriever = lexical_retriever or LexicalRetriever(db)
+        self.reranker = build_reranker(settings.reranker_provider)
         self.documents = DocumentRepository(db)
         self.traces = RetrievalRepository(db)
 
@@ -42,8 +52,10 @@ class RetrievalService:
         top_k: int | None,
         score_threshold: float | None,
         conversation_id: str | None = None,
+        mode: RetrievalMode | None = None,
     ) -> RetrievalResult:
         started = time.perf_counter()
+        resolved_mode: RetrievalMode = mode or self.settings.retrieval_mode
         fingerprint = index_fingerprint(self.settings)
         selected_ids = self._resolve_document_ids(document_ids, fingerprint)
 
@@ -56,7 +68,7 @@ class RetrievalService:
                 results=[],
                 latency_ms=round((time.perf_counter() - started) * 1000, 2),
             )
-            return RetrievalResult(trace_id=trace.id, hits=[])
+            return RetrievalResult(trace_id=trace.id, hits=[], mode=resolved_mode)
 
         vector = self.embedding_provider.embed_query(query)
         resolved_top_k = top_k or self.settings.retrieval_top_k
@@ -65,12 +77,34 @@ class RetrievalService:
             if score_threshold is not None
             else self.settings.retrieval_score_threshold
         )
-        hits = self.vector_store.search(
+        dense_limit = resolved_top_k
+        if resolved_mode != "dense":
+            dense_limit = max(resolved_top_k, self.settings.hybrid_dense_candidates)
+        dense_hits = self.vector_store.search(
             vector=vector,
             document_ids=selected_ids,
-            limit=resolved_top_k,
+            limit=dense_limit,
             score_threshold=threshold,
         )
+        hits = dense_hits
+        if resolved_mode != "dense":
+            lexical_hits = self.lexical_retriever.search(
+                query=query,
+                document_ids=selected_ids,
+                limit=max(resolved_top_k, self.settings.hybrid_lexical_candidates),
+            )
+            hits = reciprocal_rank_fusion(
+                dense_hits,
+                lexical_hits,
+                limit=max(resolved_top_k, self.settings.rerank_candidates)
+                if resolved_mode == "hybrid_rerank"
+                else resolved_top_k,
+                rrf_k=self.settings.retrieval_rrf_k,
+            )
+            if resolved_mode == "hybrid_rerank" and self.reranker is not None:
+                hits = self.reranker.rerank(query, hits, resolved_top_k)
+            else:
+                hits = hits[:resolved_top_k]
         results_json = [
             {
                 "chunk_id": hit.id,
@@ -79,6 +113,7 @@ class RetrievalService:
                 "page_number": int(hit.payload.get("page_number", 0)),
                 "chunk_index": int(hit.payload.get("chunk_index", 0)),
                 "score": hit.score,
+                "retrieval_mode": resolved_mode,
             }
             for hit in hits
         ]
@@ -90,7 +125,7 @@ class RetrievalService:
             results=results_json,
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
         )
-        return RetrievalResult(trace_id=trace.id, hits=hits)
+        return RetrievalResult(trace_id=trace.id, hits=hits, mode=resolved_mode)
 
     def _resolve_document_ids(self, document_ids: list[str] | None, fingerprint: str) -> list[str]:
         if document_ids:
