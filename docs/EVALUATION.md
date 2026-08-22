@@ -86,6 +86,34 @@ improves MRR and nDCG over dense-only, while reranking adds local CPU latency
 without a reliable fixture-quality improvement. Therefore `hybrid` remains the
 default and `hybrid_rerank` remains an explicit opt-in mode.
 
+## Cycle 4 local OCR evaluation
+
+The OCR subset is intentionally separate from the retrieval-mode comparison. Run
+the deterministic provider-free subset with:
+
+```bash
+python -m evaluation.run_ocr_benchmark \
+  --output evaluation/results/ocr_benchmark.json
+```
+
+It generates six safe PDFs at runtime: native text, image-only, mixed native/image,
+blank scanned, malformed, and an OCR-page-limit case. The default fixture adapter
+keeps quality metrics deterministic while exercising `PDFTextExtractor` and
+`TextChunker`. The benchmark reports:
+
+- extraction success rate;
+- retrieval Recall@3 on scorable positive cases;
+- citation page accuracy;
+- per-case extraction method/error code; and
+- p50 OCR ingestion latency as an observational metric.
+
+To exercise the production local engine instead of the deterministic adapter, run
+`python -m evaluation.run_ocr_benchmark --real-ocr`. Docker and CI install
+Tesseract locally before running this command. The actual `IngestionService` →
+vector store → `RetrievalService` path, abstention behavior, and citation page
+preservation are covered by `tests/test_ocr.py`; no private documents or OCR text
+are checked in.
+
 ## Golden query format
 
 Copy the example file:

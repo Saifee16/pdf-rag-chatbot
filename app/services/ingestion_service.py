@@ -11,6 +11,7 @@ from app.providers.base import EmbeddingProvider
 from app.repositories.document_repository import DocumentRepository
 from app.services.chunking_service import ChunkDraft, TextChunker
 from app.services.index_config import index_fingerprint
+from app.services.ocr_service import OCRService, OCRTransientError
 from app.services.pdf_service import PDFTextExtractor
 from app.services.vector_store import QdrantVectorStore, VectorPoint
 
@@ -35,7 +36,24 @@ class IngestionService:
         self.embedding_provider = embedding_provider
         self.vector_store = vector_store
         self.documents = DocumentRepository(db)
-        self.extractor = PDFTextExtractor(max_pages=settings.max_pdf_pages)
+        ocr_service = (
+            OCRService(
+                executable=settings.ocr_executable,
+                languages=settings.ocr_languages,
+                dpi=settings.ocr_dpi,
+                timeout_seconds=settings.ocr_timeout_seconds,
+                storage_dir=settings.storage_dir,
+            )
+            if settings.ocr_enabled
+            else None
+        )
+        self.extractor = PDFTextExtractor(
+            max_pages=settings.max_pdf_pages,
+            ocr_service=ocr_service,
+            ocr_min_native_text_chars=settings.ocr_min_native_text_chars,
+            ocr_max_pages=settings.ocr_max_pages,
+            ocr_document_timeout_seconds=settings.ocr_document_timeout_seconds,
+        )
         self.chunker = TextChunker(
             chunk_size=settings.chunk_size,
             chunk_overlap=settings.chunk_overlap,
@@ -49,12 +67,14 @@ class IngestionService:
         self.documents.mark_processing(document)
         try:
             pages = self.extractor.extract(document.stored_path)
+        except OCRTransientError as exc:
+            raise RuntimeError("Transient local OCR failure; ingestion will be retried.") from exc
         except AppError as exc:
             raise PermanentIngestionError(exc.message) from exc
         drafts = self.chunker.split(pages)
         if not drafts:
             raise PermanentIngestionError(
-                "The PDF contains no extractable text. Scanned-image PDFs require an OCR extension."
+                "The PDF contains no extractable text. Enable local OCR for scanned documents."
             )
 
         vectors: list[list[float]] = []
@@ -88,12 +108,12 @@ class IngestionService:
             )
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]
-        vectors_written = False
+        vectors_attempted = False
         try:
             self.vector_store.ensure_collection(dimensions)
             self.vector_store.delete_document(document.id)
+            vectors_attempted = True
             self.vector_store.upsert(points)
-            vectors_written = True
             self.documents.replace_chunks(document.id, chunks)
             self.documents.mark_ready(
                 document,
@@ -104,7 +124,7 @@ class IngestionService:
                 index_fingerprint=index_fingerprint(self.settings),
             )
         except Exception:
-            if vectors_written:
+            if vectors_attempted:
                 try:
                     self.vector_store.delete_document(document.id)
                 except Exception:

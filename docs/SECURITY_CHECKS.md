@@ -61,6 +61,18 @@ For repositories owned by a GitHub organization, the official Gitleaks Action cu
 
 A local test pass does not prove the GitHub-hosted security jobs passed. The repository should only claim a specific scan passed after the corresponding workflow run is green.
 
+## Local OCR controls
+
+Scanned-page processing is deliberately local and bounded. The worker renders one
+page at a time, invokes the configured Tesseract executable with an argument list
+(`shell=False`), and removes the temporary PNG directory after the subprocess
+returns. Configuration validates OCR language identifiers and executable input;
+per-page timeout, document deadline, maximum OCR pages, image-pixel, and output-size
+limits prevent unbounded work. OCR timeout failures are retryable by Celery, while
+malformed pages, unavailable engines, and non-zero engine exits are permanent
+document failures. OCR text is never logged, uploaded to a provider, or committed
+to the repository.
+
 ## Security claims this project does not make
 
 This baseline is not:
