@@ -20,7 +20,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout full Git history
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -40,7 +40,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Generate filesystem SARIF report
         uses: aquasecurity/trivy-action@v0.36.0
@@ -82,7 +82,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Build security scan image
         run: docker build --tag pdf-rag-chatbot:security .
