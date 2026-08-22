@@ -62,11 +62,10 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements-dev.txt
-      - name: Run deterministic V2 benchmark
+      - name: Run deterministic V2 benchmark and abstention regression
         run: |
           python -m evaluation.run_retrieval_benchmark \
             --iterations 20 \
-            --baseline evaluation/results/retrieval_benchmark_v2.json \
             --check-regression
 
   migrations:

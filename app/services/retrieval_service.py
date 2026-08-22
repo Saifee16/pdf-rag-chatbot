@@ -14,6 +14,7 @@ from app.services.hybrid_retrieval import reciprocal_rank_fusion
 from app.services.index_config import index_fingerprint
 from app.services.lexical_retrieval import LexicalRetriever
 from app.services.reranking_service import build_reranker
+from app.services.retrieval_confidence import RetrievalConfidenceService
 from app.services.vector_store import QdrantVectorStore, VectorHit
 
 RetrievalMode = Literal["dense", "hybrid", "hybrid_rerank"]
@@ -24,6 +25,9 @@ class RetrievalResult:
     trace_id: str
     hits: list[VectorHit]
     mode: RetrievalMode
+    confidence: float = 0.0
+    abstained: bool = False
+    abstention_reason: str | None = None
 
 
 class RetrievalService:
@@ -41,6 +45,10 @@ class RetrievalService:
         self.vector_store = vector_store
         self.lexical_retriever = lexical_retriever or LexicalRetriever(db)
         self.reranker = build_reranker(settings.reranker_provider)
+        self.confidence = RetrievalConfidenceService(
+            enabled=settings.retrieval_abstention_enabled,
+            threshold=settings.retrieval_confidence_threshold,
+        )
         self.documents = DocumentRepository(db)
         self.traces = RetrievalRepository(db)
 
@@ -68,7 +76,14 @@ class RetrievalService:
                 results=[],
                 latency_ms=round((time.perf_counter() - started) * 1000, 2),
             )
-            return RetrievalResult(trace_id=trace.id, hits=[], mode=resolved_mode)
+            return RetrievalResult(
+                trace_id=trace.id,
+                hits=[],
+                mode=resolved_mode,
+                confidence=0.0,
+                abstained=True,
+                abstention_reason="no_eligible_documents",
+            )
 
         vector = self.embedding_provider.embed_query(query)
         resolved_top_k = top_k or self.settings.retrieval_top_k
@@ -105,6 +120,8 @@ class RetrievalService:
                 hits = self.reranker.rerank(query, hits, resolved_top_k)
             else:
                 hits = hits[:resolved_top_k]
+        decision = self.confidence.decide(hits, mode=resolved_mode)
+        accepted_hits = hits if decision.accepted else []
         results_json = [
             {
                 "chunk_id": hit.id,
@@ -115,7 +132,7 @@ class RetrievalService:
                 "score": hit.score,
                 "retrieval_mode": resolved_mode,
             }
-            for hit in hits
+            for hit in accepted_hits
         ]
         trace = self.traces.add(
             conversation_id=conversation_id,
@@ -125,7 +142,14 @@ class RetrievalService:
             results=results_json,
             latency_ms=round((time.perf_counter() - started) * 1000, 2),
         )
-        return RetrievalResult(trace_id=trace.id, hits=hits, mode=resolved_mode)
+        return RetrievalResult(
+            trace_id=trace.id,
+            hits=accepted_hits,
+            mode=resolved_mode,
+            confidence=decision.confidence,
+            abstained=not decision.accepted,
+            abstention_reason=decision.reason,
+        )
 
     def _resolve_document_ids(self, document_ids: list[str] | None, fingerprint: str) -> list[str]:
         if document_ids:

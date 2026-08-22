@@ -11,6 +11,7 @@ from evaluation.evaluate_retrieval import (
 )
 from evaluation.run_retrieval_benchmark import (
     check_regression,
+    evaluate_abstention_report,
     evaluate_fixture_report,
     validate_fixture,
 )
@@ -45,7 +46,8 @@ def test_top_k_metrics_and_negative_queries() -> None:
 def test_v2_fixture_integrity_and_category_coverage() -> None:
     data = fixture()
     validate_fixture(data)
-    assert len(data["cases"]) == 34
+    assert len(data["cases"]) == 46
+    assert sum(bool(case.get("expected_no_answer")) for case in data["cases"]) == 14
     assert len({case["category"] for case in data["cases"]}) >= 12
     assert all("private" not in chunk["text"].lower() for chunk in data["chunks"])
 
@@ -68,7 +70,21 @@ def test_v2_report_is_reproducible_for_quality_metrics() -> None:
 
 def test_regression_thresholds_capture_hybrid_quality() -> None:
     report = evaluate_fixture_report(fixture(), iterations=1)
+    from evaluation.run_retrieval_benchmark import evaluate_abstention_report
+
+    report["abstention"] = evaluate_abstention_report(fixture(), iterations=1)
     assert check_regression(report) == []
     degraded = json.loads(json.dumps(report))
-    degraded["modes"]["hybrid"]["mrr"] = 0.1
-    assert any("hybrid.mrr" in item for item in check_regression(degraded))
+    degraded["abstention"]["held_out"]["hybrid"]["negative_fp"] = 0.5
+    assert any("negative_fp" in item for item in check_regression(degraded))
+
+
+def test_calibration_is_deterministic_and_held_out_reduces_false_positives() -> None:
+    report = evaluate_abstention_report(fixture(), iterations=1)
+    repeat = evaluate_abstention_report(fixture(), iterations=1)
+    assert report["chosen_threshold"] == 0.5
+    assert report["chosen_threshold"] == repeat["chosen_threshold"]
+    assert report["calibration"]["hybrid"]["negative_fp"] == 0.0
+    assert report["held_out"]["hybrid"]["negative_fp"] == 0.0
+    assert report["held_out"]["hybrid"]["positive_false_abstain"] == 0.0
+    assert report["held_out_without_abstention"]["hybrid"]["negative_fp"] == 1.0

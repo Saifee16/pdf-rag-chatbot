@@ -14,6 +14,9 @@ from app.services.retrieval_service import RetrievalMode, RetrievalService
 from app.services.vector_store import VectorHit
 
 CITATION_PATTERN = re.compile(r"\[(\d+)\]")
+INSUFFICIENT_EVIDENCE_ANSWER = (
+    "I don't have enough evidence in the indexed documents to answer that question."
+)
 
 
 class RAGService:
@@ -55,28 +58,40 @@ class RAGService:
             conversation_id=conversation.id,
             mode=mode,
         )
-        prompt = self._build_prompt(question=question, history=history, hits=retrieval.hits)
-        generated = self.chat_provider.generate(
-            system_instruction=self.system_prompt,
-            prompt=prompt,
-        )
-        citations = self._extract_citations(generated.content, retrieval.hits)
+        if retrieval.abstained:
+            answer = INSUFFICIENT_EVIDENCE_ANSWER
+            citations: list[CitationData] = []
+            provider = "abstention"
+            model = "none"
+        else:
+            prompt = self._build_prompt(question=question, history=history, hits=retrieval.hits)
+            generated = self.chat_provider.generate(
+                system_instruction=self.system_prompt,
+                prompt=prompt,
+            )
+            answer = generated.content
+            citations = self._extract_citations(answer, retrieval.hits)
+            provider = generated.provider
+            model = generated.model
         assistant_message = self.conversations.add_message(
             conversation,
             role="assistant",
-            content=generated.content,
+            content=answer,
             citations=[citation.model_dump(mode="json") for citation in citations],
         )
 
         return ChatData(
             conversation_id=conversation.id,
             message_id=assistant_message.id,
-            answer=generated.content,
+            answer=answer,
             citations=citations,
             retrieval_trace_id=retrieval.trace_id,
-            provider=generated.provider,
-            model=generated.model,
+            provider=provider,
+            model=model,
             retrieved_chunk_count=len(retrieval.hits),
+            retrieval_confidence=retrieval.confidence,
+            abstained=retrieval.abstained,
+            abstention_reason=retrieval.abstention_reason,
         )
 
     def _get_or_create_conversation(self, conversation_id: str | None, question: str):

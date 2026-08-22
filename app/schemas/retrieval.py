@@ -34,3 +34,6 @@ class RetrievalData(BaseModel):
     count: int
     mode: Literal["dense", "hybrid", "hybrid_rerank"]
     hits: list[RetrievalHitData]
+    retrieval_confidence: float = 0.0
+    abstained: bool = False
+    abstention_reason: str | None = None

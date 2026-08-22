@@ -44,5 +44,8 @@ def retrieval_search(
             count=len(hits),
             mode=result.mode,
             hits=hits,
+            retrieval_confidence=result.confidence,
+            abstained=result.abstained,
+            abstention_reason=result.abstention_reason,
         ),
     )
