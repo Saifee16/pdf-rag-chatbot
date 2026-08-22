@@ -33,6 +33,16 @@ def retrieval_search(
             chunk_index=int(hit.payload.get("chunk_index", 0)),
             score=round(hit.score, 6),
             text=str(hit.payload.get("text", "")),
+            section_title=(
+                str(hit.payload["section_title"]) if hit.payload.get("section_title") else None
+            ),
+            content_type=str(hit.payload.get("content_type", "text")),
+            table_index=(
+                int(hit.payload["table_index"])
+                if hit.payload.get("table_index") is not None
+                else None
+            ),
+            extraction_method=str(hit.payload.get("extraction_method", "native")),
         )
         for index, hit in enumerate(result.hits, start=1)
     ]

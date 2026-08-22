@@ -114,6 +114,33 @@ vector store → `RetrievalService` path, abstention behavior, and citation page
 preservation are covered by `tests/test_ocr.py`; no private documents or OCR text
 are checked in.
 
+## Cycle 5 structure and table evaluation
+
+Run the focused synthetic comparison with:
+
+```bash
+python -m evaluation.run_layout_benchmark \
+  --check-regression \
+  --output evaluation/results/layout_benchmark.json
+```
+
+The fixture contains ten deterministic cases: simple text, two-column reading
+order, section headings, ruled tables, table-plus-prose, two-column key/value
+tables, repeated headings across pages, mixed native/OCR pages, empty cells, and a
+table-limit case. The evaluator runs the previous plain block path and the new
+`StructuredExtractionService` against the same generated PDFs and reports extraction
+success, structure preservation, retrieval Recall@3, page citation accuracy,
+table-answer retrieval accuracy, and observational ingestion latency.
+
+This is retrieval-grounded deterministic evidence, not an LLM answer-quality claim.
+The regression gate requires layout extraction not to reduce retrieval or citation
+metrics and requires measurable structure preservation for columns, headings, and
+tables. Latency is reported but not thresholded. The fixture is synthetic and
+generated at runtime; no private PDFs, extracted documents, or embeddings are
+committed. Because structure changes chunk content, the extractor version is included
+in the index fingerprint and documents should be reindexed before comparing
+production retrieval results.
+
 ## Golden query format
 
 Copy the example file:

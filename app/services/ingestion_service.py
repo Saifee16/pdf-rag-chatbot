@@ -103,6 +103,7 @@ class IngestionService:
                     "page_number": chunk.page_number,
                     "chunk_index": chunk.chunk_index,
                     "text": chunk.text,
+                    **(chunk.metadata_json or {}),
                     "index_fingerprint": index_fingerprint(self.settings),
                 },
             )
@@ -156,4 +157,10 @@ class IngestionService:
             chunk_index=draft.chunk_index,
             text=draft.text,
             text_sha256=text_sha,
+            metadata_json={
+                "section_title": draft.section_title,
+                "content_type": draft.content_type,
+                "table_index": draft.table_index,
+                "extraction_method": draft.extraction_method,
+            },
         )

@@ -58,10 +58,13 @@ worker marks document processing
       ↓
       PyMuPDF native page extraction
       ↓
+      StructuredExtractionService (blocks, deterministic reading order,
+      headings, bounded ruled-table extraction, section context)
+      ↓
       pages below OCR_MIN_NATIVE_TEXT_CHARS → local Tesseract OCR
       (per-page image/time limits, bounded OCR_MAX_PAGES)
       ↓
-      page-aware chunking
+      structure-aware page chunking (tables stay row-safe; metadata propagates)
       ↓
 document embeddings in batches
       ↓
@@ -75,6 +78,25 @@ Document(status=ready)
 ```
 
 The API acknowledges the upload before the full indexing pipeline completes. Clients poll `GET /api/v1/documents/{document_id}` until the document is `ready` or `failed`. OCR runs inside the worker with a direct, argument-list subprocess call; no OCR bytes are sent to an external service. Page numbers and citation metadata remain attached to the resulting chunks for native, OCR, and mixed documents.
+
+### Structure-aware extraction boundary
+
+`StructuredExtractionService` is a deterministic additive layer over the existing
+PyMuPDF APIs. It uses native text dictionaries for block geometry and font evidence,
+groups common two-column pages column-major, and infers headings only when size,
+boldness, isolation, or numbering provide converging evidence. PyMuPDF's native
+`find_tables(strategy="lines")` path is used for machine-generated ruled tables.
+Tables are rendered as bounded Markdown with empty cells preserved, and accepted table
+regions are excluded from ordinary blocks to prevent duplicate indexing. If a table is
+uncertain or exceeds row, column, cell, or output limits, ordinary native text remains
+the fallback. OCR pages remain plain OCR elements: layout is not fabricated where the
+OCR engine does not provide reliable coordinates. Complex borderless tables, merged
+cells, and magazine-style layouts are intentionally unsupported.
+
+Chunk metadata records `section_title`, `content_type`, `table_index`, and extraction
+method in an additive JSON column and vector payload. Page-level citation behavior is
+unchanged. The extractor version participates in the index fingerprint, so existing
+documents must be reindexed to receive the new structure-aware chunks.
 
 ## Online retrieval path
 
@@ -300,7 +322,6 @@ The API container applies Alembic migrations before starting Uvicorn. Both API a
 
 Not included in this baseline:
 
-- table-specific extraction
 - multi-tenancy
 - end-user JWT/OAuth
 - object-storage adapter
@@ -308,6 +329,7 @@ Not included in this baseline:
 - streaming generation
 - automatic embedding-model migration
 
-Local OCR for scanned/image-only PDFs is implemented as the Cycle 4 extension. The
-remaining items are explicit extensions, not hidden TODOs required for the core v1
-to function.
+Local OCR for scanned/image-only PDFs is implemented as the Cycle 4 extension and
+bounded native layout extraction as Cycle 5. Complex layout understanding, semantic
+table reasoning, handwriting, and the remaining items are explicit extensions, not
+hidden TODOs required for the core v1 to function.

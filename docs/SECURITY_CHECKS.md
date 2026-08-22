@@ -73,6 +73,18 @@ malformed pages, unavailable engines, and non-zero engine exits are permanent
 document failures. OCR text is never logged, uploaded to a provider, or committed
 to the repository.
 
+## Structure-aware extraction controls
+
+Native layout analysis remains local to PyMuPDF. Ruled-table extraction is capped
+at 8 tables per page, 200 rows, 50 columns, 2,000 cells, and 100,000 characters;
+pages are also capped at 10,000 drawings, 2,000 text blocks, and 1,000,000 combined output
+characters. Accepted table regions are represented once so table text is not
+duplicated with ordinary blocks. Uncertain or over-limit tables fall back to the
+bounded native text path. No external document-AI service, vision model, or new
+runtime dependency is used. Structure metadata is additive and contains only
+page-derived chunk labels; it does not change authorization or citation page
+validation.
+
 ## Security claims this project does not make
 
 This baseline is not:

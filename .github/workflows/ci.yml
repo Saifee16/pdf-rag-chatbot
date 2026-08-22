@@ -76,6 +76,11 @@ jobs:
           python -m evaluation.run_ocr_benchmark \
             --real-ocr \
             --output /tmp/ocr-benchmark.json
+      - name: Run layout and table benchmark
+        run: |
+          python -m evaluation.run_layout_benchmark \
+            --check-regression \
+            --output /tmp/layout-benchmark.json
 
   migrations:
     name: Migration Smoke Test

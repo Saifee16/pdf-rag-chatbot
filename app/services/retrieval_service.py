@@ -131,6 +131,10 @@ class RetrievalService:
                 "chunk_index": int(hit.payload.get("chunk_index", 0)),
                 "score": hit.score,
                 "retrieval_mode": resolved_mode,
+                "section_title": hit.payload.get("section_title"),
+                "content_type": hit.payload.get("content_type", "text"),
+                "table_index": hit.payload.get("table_index"),
+                "extraction_method": hit.payload.get("extraction_method", "native"),
             }
             for hit in accepted_hits
         ]

@@ -44,6 +44,9 @@ def test_ingestion_extracts_chunks_embeds_and_marks_ready(
     assert refreshed.chunk_count >= 1
     assert refreshed.index_fingerprint == index_fingerprint(settings)
     assert len(vector_store.points) == refreshed.chunk_count
+    first_point = next(iter(vector_store.points.values()))
+    assert first_point.payload["content_type"] in {"text", "mixed"}
+    assert first_point.payload["extraction_method"] == "native"
 
 
 def test_ingestion_is_idempotent_for_vector_points(

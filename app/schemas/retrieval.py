@@ -26,6 +26,10 @@ class RetrievalHitData(BaseModel):
     chunk_index: int
     score: float
     text: str
+    section_title: str | None = None
+    content_type: str = "text"
+    table_index: int | None = None
+    extraction_method: str = "native"
 
 
 class RetrievalData(BaseModel):
