@@ -31,7 +31,7 @@ This project models RAG as an actual system:
 
 ```text
 OFFLINE INGESTION
-PDF → secure-ish upload validation → storage → queue → extraction
+PDF → Defensive upload validation → storage → queue → extraction
     → page-aware chunks → embeddings → Qdrant → ready document
 
 ONLINE QUESTION ANSWERING
