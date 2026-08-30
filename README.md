@@ -135,46 +135,43 @@ question → query embedding → filtered dense retrieval → ranked chunks
 
 ## Architecture
 
-```text
-                               CLIENT
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   FastAPI API    │
-                         │ auth / schemas   │
-                         │ request context  │
-                         └───────┬──────────┘
-                                 │
-                  ┌──────────────┴───────────────┐
-                  │                              │
-            document upload                  chat/query
-                  │                              │
-                  ▼                              ▼
-          LocalStorageService             RetrievalService
-                  │                              │
-                  ▼                              ├── query embedding
-          PostgreSQL metadata                    │
-                  │                              ▼
-                  ▼                         Qdrant search
-             Redis queue                         │
-                  │                              ▼
-                  ▼                         ranked chunks
-            Celery worker                        │
-                  │                              ▼
-       ┌──────────┼──────────┐               RAGService
-       │          │          │                    │
-       ▼          ▼          ▼                    ├── conversation history
-       PyMuPDF → StructuredExtractionService → TextChunker → Embeddings
-                                                     ├── system instruction
-       │          │          │                    ├── document contexts
-       └──────────┴──────────┘                    └── current question
-                  │                                   │
-                  ▼                                   ▼
-                Qdrant                       ChatProvider adapter
-                                                      │
-                                      ┌───────────────┼───────────────┐
-                                      ▼               ▼               ▼
-                                   Gemini          OpenAI       Project 3 Gateway
+```mermaid
+flowchart TD
+    CLIENT[Client] --> API["FastAPI API<br/>auth / schemas / request context"]
+
+    API --> UPLOAD[Document upload]
+    API --> QUERY[Chat / query]
+
+    subgraph Ingestion[Offline Ingestion]
+        UPLOAD --> LSS[LocalStorageService]
+        LSS --> PG[(PostgreSQL metadata)]
+        PG --> RQ[[Redis queue]]
+        RQ --> CW[Celery worker]
+        CW --> EXTRACT[PyMuPDF]
+        CW --> STRUCT[StructuredExtractionService]
+        CW --> CHUNK[TextChunker]
+        CW --> EMBED[Embeddings]
+        EXTRACT --> QD1[(Qdrant)]
+        STRUCT --> QD1
+        CHUNK --> QD1
+        EMBED --> QD1
+    end
+
+    subgraph Retrieval[Online Question Answering]
+        QUERY --> RS[RetrievalService]
+        RS --> QE[Query embedding]
+        QE --> QSEARCH[Qdrant search]
+        QSEARCH --> RANKED[Ranked chunks]
+        RANKED --> RAG[RAGService]
+        RAG -.-> HIST[Conversation history]
+        RAG -.-> SYS[System instruction]
+        RAG -.-> DOCS[Document contexts]
+        RAG -.-> Q[Current question]
+        RAG --> CPA[ChatProvider adapter]
+        CPA --> GEMINI[Gemini]
+        CPA --> OPENAI[OpenAI]
+        CPA --> GW[Project 3 Gateway]
+    end
 ```
 
 Read the complete architecture description in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
