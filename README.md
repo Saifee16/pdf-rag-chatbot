@@ -162,11 +162,13 @@ flowchart TD
         RS --> QE[Query embedding]
         QE --> QSEARCH[Qdrant search]
         QSEARCH --> RANKED[Ranked chunks]
-        RANKED --> RAG[RAGService]
-        RAG -.-> HIST[Conversation history]
-        RAG -.-> SYS[System instruction]
-        RAG -.-> DOCS[Document contexts]
-        RAG -.-> Q[Current question]
+
+        HIST[Conversation history] --> RAG[RAGService]
+        SYS[System instruction] --> RAG
+        DOCS[Document contexts] --> RAG
+        Q[Current question] --> RAG
+        RANKED --> RAG
+
         RAG --> CPA[ChatProvider adapter]
         CPA --> GEMINI[Gemini]
         CPA --> OPENAI[OpenAI]
